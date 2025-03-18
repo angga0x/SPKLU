@@ -22,6 +22,7 @@ export interface ChargingStation {
     contactEmail?: string;
     accessComments?: string;
     relatedURL?: string;
+    distance?: number;
   };
   operatorInfo?: {
     id?: number;
@@ -87,6 +88,8 @@ export async function fetchNearbyStations(params: SearchParams): Promise<Chargin
   try {
     const { latitude, longitude, distance = 15, maxResults = 100, countryCode } = params;
     
+    console.log("Fetching stations with params:", { latitude, longitude, distance, maxResults });
+    
     const queryParams = new URLSearchParams({
       latitude: latitude.toString(),
       longitude: longitude.toString(),
@@ -103,23 +106,32 @@ export async function fetchNearbyStations(params: SearchParams): Promise<Chargin
       queryParams.append('countrycode', countryCode);
     }
 
-    const response = await fetch(`${BASE_URL}/poi/?${queryParams.toString()}`);
+    const url = `${BASE_URL}/poi/?${queryParams.toString()}`;
+    console.log("Fetching from URL:", url);
+    
+    const response = await fetch(url);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch stations: ${response.status}`);
     }
     
     const data = await response.json() as ChargingStation[];
+    console.log("Received data:", data.length, "stations");
+    console.log("First station sample:", data[0] ? JSON.stringify(data[0].addressInfo) : "No stations found");
     
     // Add status for UI rendering based on station information
     const processedData = data.map(station => ({
       ...station,
-      status: determineStationStatus(station)
+      status: determineStationStatus(station),
+      // Ensure distance is properly set if it's in the addressInfo
+      distance: station.distance || station.addressInfo.distance
     }));
     
     return processedData;
   } catch (error) {
     console.error('Error fetching charging stations:', error);
+    console.log('Error details:', error instanceof Error ? error.message : String(error));
+    
     toast({
       title: "Error",
       description: "Failed to load charging stations. Please try again later.",
@@ -181,7 +193,9 @@ export async function searchStations(
     
     const processedData = data.map(station => ({
       ...station,
-      status: determineStationStatus(station)
+      status: determineStationStatus(station),
+      // Ensure distance is properly set if it's in the addressInfo
+      distance: station.distance || station.addressInfo.distance
     }));
     
     return processedData;
@@ -192,6 +206,66 @@ export async function searchStations(
       description: "Failed to search charging stations. Please try again later.",
       variant: "destructive"
     });
+    return [];
+  }
+}
+
+// New helper function to handle the specific OpenChargeMap response format
+export function mapApiResponse(apiResponse: any[]): ChargingStation[] {
+  console.log("Mapping API response:", apiResponse.length, "items");
+  
+  if (!Array.isArray(apiResponse) || apiResponse.length === 0) {
+    console.log("Empty or invalid API response");
+    return [];
+  }
+  
+  try {
+    return apiResponse.map(item => {
+      // Log the structure of the first item to help debug
+      if (apiResponse.indexOf(item) === 0) {
+        console.log("First item structure:", JSON.stringify(item));
+      }
+      
+      // Map the OpenChargeMap response to our ChargingStation interface
+      return {
+        id: item.ID,
+        uuid: item.UUID,
+        addressInfo: {
+          id: item.AddressInfo.ID,
+          title: item.AddressInfo.Title,
+          addressLine1: item.AddressInfo.AddressLine1,
+          town: item.AddressInfo.Town,
+          stateOrProvince: item.AddressInfo.StateOrProvince,
+          postcode: item.AddressInfo.Postcode,
+          latitude: item.AddressInfo.Latitude,
+          longitude: item.AddressInfo.Longitude,
+          country: {
+            id: item.AddressInfo.CountryID,
+            isoCode: "",  // This might not be in the response
+            title: ""     // This might not be in the response
+          },
+          distance: item.AddressInfo.Distance
+        },
+        connections: (item.Connections || []).map((conn: any) => ({
+          id: conn.ID,
+          connectionType: {
+            id: conn.ConnectionTypeID,
+            title: conn.ConnectionType?.Title || "Unknown Type"
+          },
+          level: {
+            id: conn.LevelID,
+            title: conn.Level?.Title || "Unknown Level",
+            comments: conn.Level?.Comments || ""
+          },
+          powerKW: conn.PowerKW,
+          quantity: conn.Quantity
+        })),
+        status: determineStationStatus(item),
+        distance: item.AddressInfo.Distance
+      };
+    });
+  } catch (error) {
+    console.error("Error mapping API response:", error);
     return [];
   }
 }

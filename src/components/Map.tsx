@@ -144,6 +144,7 @@ const Map: React.FC<MapProps> = ({
     if (!map.current || !mapLoaded) return;
 
     console.log("Updating station markers, count:", stations.length);
+    console.log("Stations data:", JSON.stringify(stations.slice(0, 2)));
     
     // Clear existing markers
     markersRef.current.forEach(marker => marker.remove());
@@ -236,6 +237,17 @@ const Map: React.FC<MapProps> = ({
               : "Waiting for location..."}
         </p>
       </div>
+      
+      {/* Debug info - only shown in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="absolute top-20 right-4 bg-white bg-opacity-80 p-2 rounded-lg shadow-md max-w-xs text-xs overflow-auto max-h-40">
+          <p className="font-medium">Debug Info:</p>
+          <p>Map Loaded: {mapLoaded ? 'Yes' : 'No'}</p>
+          <p>User Location: {userLocation ? `${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)}` : 'None'}</p>
+          <p>Stations Count: {stations.length}</p>
+          <p>Markers Count: {markersRef.current.length}</p>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import Map from '../components/Map';
 import SearchBar from '../components/SearchBar';
 import StationList from '../components/StationList';
 import LocationButton from '../components/LocationButton';
-import { ChargingStation, fetchNearbyStations, searchStations } from '../utils/api';
+import { ChargingStation, fetchNearbyStations, searchStations, mapApiResponse } from '../utils/api';
 import { calculateDistance } from '../utils/distance';
 import { toast } from '../components/ui/use-toast';
 import { Toaster } from '../components/ui/toaster';
@@ -26,6 +27,8 @@ const Index = () => {
     if (!userLocation) return;
     
     setIsLoading(true);
+    console.log("Loading stations near", userLocation);
+    
     try {
       let data = await fetchNearbyStations({
         latitude: userLocation.latitude,
@@ -34,10 +37,30 @@ const Index = () => {
         maxResults: 100
       });
       
-      // Calculate distance for each station
+      console.log("Loaded stations:", data.length);
+      
+      if (data.length === 0) {
+        console.log("No stations found, checking if response needs mapping");
+        
+        // This is a fallback in case the data doesn't match our expected format
+        const response = await fetch(`https://api.openchargemap.io/v3/poi/?latitude=${userLocation.latitude}&longitude=${userLocation.longitude}&distance=15&distanceunit=km&maxresults=100&compact=true&verbose=false&output=json&key=d7609f7a-6dca-4bd4-a531-ce798439da2c`);
+        
+        if (response.ok) {
+          const rawData = await response.json();
+          console.log("Raw API response:", rawData.length, "items");
+          
+          if (Array.isArray(rawData) && rawData.length > 0) {
+            // Map the raw data to our ChargingStation structure
+            data = mapApiResponse(rawData);
+            console.log("Mapped stations:", data.length);
+          }
+        }
+      }
+      
+      // Calculate distance for each station if not already present
       data = data.map(station => ({
         ...station,
-        distance: calculateDistance(
+        distance: station.distance || calculateDistance(
           { latitude: userLocation.latitude, longitude: userLocation.longitude },
           { latitude: station.addressInfo.latitude, longitude: station.addressInfo.longitude }
         )
@@ -49,10 +72,17 @@ const Index = () => {
       setStations(data);
       setFilteredStations(data);
       
-      toast({
-        title: "Stasiun ditemukan",
-        description: `${data.length} stasiun pengisian kendaraan listrik terdekat ditemukan.`,
-      });
+      if (data.length > 0) {
+        toast({
+          title: "Stasiun ditemukan",
+          description: `${data.length} stasiun pengisian kendaraan listrik terdekat ditemukan.`,
+        });
+      } else {
+        toast({
+          title: "Tidak ada stasiun",
+          description: "Tidak ada stasiun pengisian kendaraan listrik yang ditemukan di sekitar Anda.",
+        });
+      }
     } catch (error) {
       console.error("Failed to load stations:", error);
       toast({
@@ -68,6 +98,7 @@ const Index = () => {
   // Get user's current location
   const getUserLocation = useCallback(() => {
     setIsLocating(true);
+    console.log("Getting user location...");
     
     if (!navigator.geolocation) {
       toast({
@@ -82,6 +113,7 @@ const Index = () => {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
+        console.log("User location obtained:", latitude, longitude);
         setUserLocation({ latitude, longitude });
         setIsLocating(false);
       },
@@ -209,6 +241,18 @@ const Index = () => {
     }
   }, [userLocation, loadStations]);
 
+  // Try to get user location automatically on component mount
+  useEffect(() => {
+    // Small delay to allow the UI to render first
+    const timer = setTimeout(() => {
+      if (!userLocation && !isLocating) {
+        getUserLocation();
+      }
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="relative h-screen w-full bg-background overflow-hidden">
       <Toaster />
@@ -243,6 +287,18 @@ const Index = () => {
         </div>
       )}
       
+      {/* Debug Info - Only shown in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="absolute top-20 left-4 z-10 bg-white bg-opacity-80 p-2 rounded-lg shadow-md max-w-xs text-xs overflow-auto">
+          <p className="font-bold">Debug Info:</p>
+          <p>User Location: {userLocation ? `${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)}` : 'None'}</p>
+          <p>All Stations: {stations.length}</p>
+          <p>Filtered Stations: {filteredStations.length}</p>
+          <p>API Key: {API_KEY_SUBSTRING}</p>
+          <p>Loading: {isLoading ? 'Yes' : 'No'}</p>
+        </div>
+      )}
+      
       {/* Station List */}
       <div className="absolute bottom-0 left-0 right-0 z-10 bg-background rounded-t-xl shadow-lg animate-slide-up">
         <StationList 
@@ -257,5 +313,8 @@ const Index = () => {
     </div>
   );
 };
+
+// For security, only show a substring of the API key in debug info
+const API_KEY_SUBSTRING = 'd7609f7a-****-****-****-********da2c';
 
 export default Index;
