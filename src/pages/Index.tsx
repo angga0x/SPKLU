@@ -21,13 +21,17 @@ const Index = () => {
   const [isLocating, setIsLocating] = useState(false);
   const [directionsRoute, setDirectionsRoute] = useState<GeoJSON.Feature | null>(null);
   const [isLoadingDirections, setIsLoadingDirections] = useState(false);
+  const [locationRequired, setLocationRequired] = useState(true);
   
   // UI state
   const [expanded, setExpanded] = useState(false);
   
   // Load stations when user location is available
   const loadStations = useCallback(async () => {
-    if (!userLocation) return;
+    if (!userLocation) {
+      console.log("User location not available yet, can't load stations");
+      return;
+    }
     
     setIsLoading(true);
     console.log("Loading stations near", userLocation);
@@ -74,6 +78,7 @@ const Index = () => {
       
       setStations(data);
       setFilteredStations(data);
+      setLocationRequired(false);
       
       if (data.length > 0) {
         toast({
@@ -118,7 +123,13 @@ const Index = () => {
         const { latitude, longitude } = position.coords;
         console.log("User location obtained:", latitude, longitude);
         setUserLocation({ latitude, longitude });
+        setLocationRequired(false);
         setIsLocating(false);
+        // Show toast notification
+        toast({
+          title: "Lokasi ditemukan",
+          description: "Lokasi Anda berhasil ditemukan. Memuat stasiun terdekat...",
+        });
       },
       (error) => {
         console.error("Geolocation error:", error);
@@ -145,8 +156,9 @@ const Index = () => {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Lokasi pengguna diperlukan untuk pencarian.",
+        description: "Lokasi pengguna diperlukan untuk pencarian. Silakan aktifkan lokasi terlebih dahulu.",
       });
+      getUserLocation();
       return;
     }
     
@@ -212,7 +224,7 @@ const Index = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [stations, userLocation]);
+  }, [stations, userLocation, getUserLocation]);
 
   // Handle station selection
   const handleStationSelect = useCallback((station: ChargingStation) => {
@@ -319,7 +331,7 @@ const Index = () => {
       
       {/* Location Button - Only show if no user location yet */}
       {!userLocation && !isLocating && (
-        <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 z-10 w-64 animate-slide-up">
+        <div className="absolute bottom-40 left-1/2 transform -translate-x-1/2 z-10 w-64 animate-slide-up">
           <LocationButton 
             onGetLocation={getUserLocation}
             isLocating={isLocating}
@@ -340,18 +352,20 @@ const Index = () => {
         </div>
       )}
       
-      {/* Station List */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 bg-background rounded-t-xl shadow-lg animate-slide-up">
-        <StationList 
-          stations={filteredStations}
-          isLoading={isLoading}
-          onStationSelect={handleStationSelect}
-          onDirectionsClick={handleDirectionsClick}
-          expanded={expanded}
-          onToggleExpand={() => setExpanded(!expanded)}
-          isLoadingDirections={isLoadingDirections}
-        />
-      </div>
+      {/* Station List - Only show if user location is found */}
+      {!locationRequired && (
+        <div className="absolute bottom-0 left-0 right-0 z-10 bg-background rounded-t-xl shadow-lg animate-slide-up">
+          <StationList 
+            stations={filteredStations}
+            isLoading={isLoading}
+            onStationSelect={handleStationSelect}
+            onDirectionsClick={handleDirectionsClick}
+            expanded={expanded}
+            onToggleExpand={() => setExpanded(!expanded)}
+            isLoadingDirections={isLoadingDirections}
+          />
+        </div>
+      )}
     </div>
   );
 };
