@@ -109,7 +109,7 @@ export const createStationMarker = ({ station, map, onStationClick }: CreateStat
     element: markerElement,
     anchor: 'center',
   })
-    .setLngLat([station.addressInfo.longitude, station.addressInfo.latitude])
+    .setLngLat([longitude, latitude])
     .setPopup(popup)
     .addTo(map);
 
@@ -117,6 +117,11 @@ export const createStationMarker = ({ station, map, onStationClick }: CreateStat
   markerElement.addEventListener('click', (e) => {
     e.stopPropagation();
     console.log("Station clicked:", station.addressInfo.title);
+    
+    // Ensure the popup is shown when clicking on the marker
+    marker.togglePopup();
+    
+    // Call the onStationClick callback
     onStationClick(station);
   });
 
@@ -137,6 +142,14 @@ export const createStationMarker = ({ station, map, onStationClick }: CreateStat
           console.log("Directions requested for:", station.addressInfo.title);
           onStationClick(station);
           popup.remove(); // Close popup after clicking directions
+        });
+      }
+      
+      // Add event listener for close button in popup
+      const closeButton = document.querySelector('.popup-close');
+      if (closeButton) {
+        closeButton.addEventListener('click', () => {
+          popup.remove();
         });
       }
     }, 100); // Small delay to ensure DOM is ready
