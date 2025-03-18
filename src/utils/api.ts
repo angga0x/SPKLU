@@ -1,3 +1,4 @@
+
 import { toast } from "../components/ui/use-toast";
 
 export interface ChargingStation {
@@ -88,29 +89,29 @@ interface NominatimResponse {
 
 export async function searchLocation(query: string): Promise<{ latitude: number; longitude: number } | null> {
   try {
+    // Use Mapbox Geocoding API instead of Nominatim
+    const MAPBOX_API_KEY = 'pk.eyJ1IjoiYW5nZzB4IiwiYSI6ImNtOGU0b3ZleDAzMW4ycW9mbHY1YXhtdTQifQ.cZL2sxCvBSXQDSqZ1aL-hQ';
     const searchQuery = encodeURIComponent(`${query},Indonesia`);
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${searchQuery}`;
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${searchQuery}.json?country=id&limit=1&access_token=${MAPBOX_API_KEY}`;
     
-    console.log("Searching location:", searchQuery);
+    console.log("Searching location with Mapbox:", searchQuery);
     
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'StasiunCharging/1.0' // Required by Nominatim ToS
-      }
-    });
+    const response = await fetch(url);
     
     if (!response.ok) {
       throw new Error('Failed to search location');
     }
     
-    const data: NominatimResponse[] = await response.json();
-    console.log("Location search results:", data);
+    const data = await response.json();
+    console.log("Mapbox Geocoding results:", data);
     
-    if (data && data.length > 0) {
-      const firstResult = data[0];
+    if (data && data.features && data.features.length > 0) {
+      const firstResult = data.features[0];
+      const [longitude, latitude] = firstResult.center;
+      
       return {
-        latitude: parseFloat(firstResult.lat),
-        longitude: parseFloat(firstResult.lon)
+        latitude,
+        longitude
       };
     }
     
