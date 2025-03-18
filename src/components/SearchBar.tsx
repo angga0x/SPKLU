@@ -4,6 +4,7 @@ import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Search, LocateFixed, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
@@ -23,6 +24,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +49,8 @@ const SearchBar: React.FC<SearchBarProps> = ({
   return (
     <form 
       className={cn(
-        "relative flex items-center max-w-xs mx-auto transition-all duration-300",
+        "relative flex items-center w-full transition-all duration-300",
+        isMobile ? "max-w-[calc(100vw-32px)]" : "max-w-md",
         isFocused ? "scale-[1.02]" : "scale-100",
         className
       )}
@@ -100,7 +103,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
       </Button>
       <Button 
         type="submit" 
-        className="ml-1 h-9 px-3 bg-blue-500 hover:bg-blue-600 text-xs"
+        className={cn(
+          "h-9 bg-blue-500 hover:bg-blue-600 text-xs",
+          isMobile ? "px-2 ml-1" : "px-3 ml-1"
+        )}
         disabled={isLoading}
       >
         {isLoading ? (
@@ -108,7 +114,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
         ) : (
           <>
             <Search className="h-3.5 w-3.5 mr-1" />
-            Cari
+            {!isMobile && "Cari"}
           </>
         )}
       </Button>
