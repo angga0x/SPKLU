@@ -4,7 +4,7 @@ import { ChargingStation } from '../utils/api';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Navigation, Phone, Globe, Info, MapPin, Zap, Clock, ExternalLink } from 'lucide-react';
+import { Navigation, Phone, Globe, Info, MapPin, Zap, Clock, ExternalLink, CreditCard } from 'lucide-react';
 import { formatDistance } from '../utils/distance';
 import { cn } from '@/lib/utils';
 
@@ -24,7 +24,8 @@ const StationCard: React.FC<StationCardProps> = ({
     operatorInfo, 
     connections, 
     distance, 
-    status 
+    status,
+    usageCost
   } = station;
 
   const statusColors = {
@@ -75,6 +76,11 @@ const StationCard: React.FC<StationCardProps> = ({
           <div className="flex items-center text-muted-foreground">
             <Clock className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
             <span>24 Jam</span>
+          </div>
+          {/* Add price information */}
+          <div className="flex items-center text-muted-foreground col-span-2">
+            <CreditCard className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
+            <span>Biaya: {usageCost || "Tidak ada informasi"}</span>
           </div>
           {distance !== undefined && (
             <div className="flex items-center text-muted-foreground col-span-2">

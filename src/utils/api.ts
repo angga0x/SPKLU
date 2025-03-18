@@ -1,4 +1,3 @@
-
 import { toast } from "../components/ui/use-toast";
 
 export interface ChargingStation {
@@ -70,6 +69,7 @@ export interface ChargingStation {
   }>;
   distance?: number; // Added for client-side distance calculation
   status?: 'available' | 'busy' | 'offline'; // Added for UI presentation
+  usageCost?: string; // Added for price information
 }
 
 export interface SearchParams {
@@ -260,6 +260,7 @@ export function mapApiResponse(apiResponse: any[]): ChargingStation[] {
           powerKW: conn.PowerKW,
           quantity: conn.Quantity
         })),
+        usageCost: item.UsageCost || "Tidak ada informasi", // Add usage cost information
         status: determineStationStatus(item),
         distance: item.AddressInfo.Distance
       };
