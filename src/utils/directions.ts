@@ -33,11 +33,23 @@ interface DirectionsResponse {
   uuid: string;
 }
 
+// Define proper GeoJSON types that match Mapbox's response format
+interface DirectionsGeometry {
+  type: "LineString";
+  coordinates: Array<[number, number]>;
+}
+
+interface DirectionsProperties {
+  distance: number;
+  duration: number;
+  bbox?: number[];
+}
+
 export async function getDirections({
   origin,
   destination,
   apiKey
-}: DirectionsParams): Promise<GeoJSON.Feature | null> {
+}: DirectionsParams): Promise<GeoJSON.Feature<DirectionsGeometry, DirectionsProperties> | null> {
   try {
     const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${origin[1]},${origin[0]};${destination[1]},${destination[0]}?alternatives=false&geometries=geojson&overview=full&steps=false&access_token=${apiKey}`;
 
@@ -58,15 +70,18 @@ export async function getDirections({
     
     const route = data.routes[0];
     
-    // Create a GeoJSON feature from the response
-    const geojson: GeoJSON.Feature = {
+    // Create a GeoJSON feature with proper typing
+    const geojson: GeoJSON.Feature<DirectionsGeometry, DirectionsProperties> = {
       type: 'Feature',
       properties: {
         distance: route.distance,
         duration: route.duration,
         bbox: getBoundingBox(route.geometry.coordinates)
       },
-      geometry: route.geometry
+      geometry: {
+        type: "LineString",
+        coordinates: route.geometry.coordinates
+      }
     };
     
     return geojson;

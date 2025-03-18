@@ -26,13 +26,22 @@ const SearchBar: React.FC<SearchBarProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSearch(query);
+    if (query.trim() || query === '') {
+      onSearch(query);
+    }
   };
 
   const handleClear = () => {
     setQuery('');
     onSearch('');
     inputRef.current?.focus();
+  };
+
+  // Handle Enter key press
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSubmit(e);
+    }
   };
 
   return (
@@ -51,6 +60,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           placeholder="Cari stasiun pengisian kendaraan listrik..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyPress={handleKeyPress}
           className={cn(
             "pl-10 pr-10 h-12 text-base bg-white dark:bg-gray-900 border-blue-100 dark:border-gray-700 shadow-sm transition-all duration-200",
             isFocused ? "shadow-md border-blue-300 dark:border-blue-700" : ""
