@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import Map from '../components/Map';
 import SearchBar from '../components/SearchBar';
@@ -147,6 +146,8 @@ const Index = () => {
   const handleSearch = useCallback(async (query: string) => {
     setSearchQuery(query);
     
+    setDirectionsRoute(null);
+    
     if (!userLocation) {
       toast({
         variant: "destructive",
@@ -161,7 +162,6 @@ const Index = () => {
     try {
       console.log(`Searching for stations with query: "${query}"`);
       
-      // Use the updated searchStations function
       const results = await searchStations(query, {
         latitude: userLocation.latitude,
         longitude: userLocation.longitude,
@@ -171,7 +171,6 @@ const Index = () => {
       console.log(`Search returned ${results.length} stations`);
       
       if (results && results.length > 0) {
-        // Calculate distance for each result
         const resultsWithDistance = results.map(station => ({
           ...station,
           distance: station.distance || 
@@ -181,7 +180,6 @@ const Index = () => {
                    ) : 0)
         }));
         
-        // Sort by distance
         resultsWithDistance.sort((a, b) => (a.distance || 0) - (b.distance || 0));
         
         setFilteredStations(resultsWithDistance);
@@ -207,7 +205,6 @@ const Index = () => {
         description: "Gagal mencari stasiun pengisian. Silakan coba lagi nanti.",
       });
       
-      // Set empty array to prevent undefined errors
       setFilteredStations([]);
     } finally {
       setIsLoading(false);
@@ -218,7 +215,6 @@ const Index = () => {
   const handleStationSelect = useCallback((station: ChargingStation) => {
     setSelectedStation(station);
     setExpanded(false);
-    // Clear any existing directions when selecting a new station
     setDirectionsRoute(null);
   }, []);
 
@@ -243,7 +239,7 @@ const Index = () => {
       const route = await getDirections({
         origin: [userLocation.latitude, userLocation.longitude],
         destination: [station.addressInfo.latitude, station.addressInfo.longitude],
-        apiKey: 'pk.eyJ1IjoiYW5nZzB4IiwiYSI6ImNtOGU0b3ZleDAzMW4ycW9mbHY1YXhtdTQifQ.cZL2sxCvBSXQDSqZ1aL-hQ' // Mapbox API key
+        apiKey: 'pk.eyJ1IjoiYW5nZzB4IiwiYSI6ImNtOGU0b3ZleDAzMW4ycW9mbHY1YXhtdTQifQ.cZL2sxCvBSXQDSqZ1aL-hQ'
       });
       
       if (route) {
@@ -282,7 +278,6 @@ const Index = () => {
 
   // Try to get user location automatically on component mount
   useEffect(() => {
-    // Small delay to allow the UI to render first
     const timer = setTimeout(() => {
       if (!userLocation && !isLocating) {
         getUserLocation();
@@ -363,7 +358,6 @@ const Index = () => {
   );
 };
 
-// For security, only show a substring of the API key in debug info
 const API_KEY_SUBSTRING = 'd7609f7a-****-****-****-********da2c';
 
 export default Index;
