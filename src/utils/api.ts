@@ -81,6 +81,7 @@ export interface SearchParams {
 }
 
 const BASE_URL = 'https://api.openchargemap.io/v3';
+// Using the provided API key for OpenChargeMap
 const API_KEY = 'd7609f7a-6dca-4bd4-a531-ce798439da2c';
 
 export async function fetchNearbyStations(params: SearchParams): Promise<ChargingStation[]> {
@@ -115,28 +116,24 @@ export async function fetchNearbyStations(params: SearchParams): Promise<Chargin
     
     const data = await response.json() as ChargingStation[];
     console.log("Received data:", data.length, "stations");
+    console.log("First station sample:", data[0] ? JSON.stringify(data[0].addressInfo) : "No stations found");
     
-    if (data.length === 0) {
-      toast({
-        title: "Tidak ada hasil",
-        description: "Tidak ada stasiun pengisian di sekitar lokasi ini.",
-      });
-      return [];
-    }
-
-    // Process the stations with proper distance calculation and status
+    // Add status for UI rendering based on station information
     const processedData = data.map(station => ({
       ...station,
       status: determineStationStatus(station),
-      distance: station.addressInfo?.distance || 0
+      // Ensure distance is properly set if it's in the addressInfo
+      distance: station.distance || station.addressInfo.distance
     }));
-
+    
     return processedData;
   } catch (error) {
     console.error('Error fetching charging stations:', error);
+    console.log('Error details:', error instanceof Error ? error.message : String(error));
+    
     toast({
       title: "Error",
-      description: "Gagal memuat stasiun pengisian. Silakan coba lagi nanti.",
+      description: "Failed to load charging stations. Please try again later.",
       variant: "destructive"
     });
     return [];
@@ -170,24 +167,18 @@ export async function searchStations(
       return fetchNearbyStations(params);
     }
     
-    console.log(`Searching stations with keyword: "${query}"`);
+    const { maxResults = 10 } = params;
     
+    // Using the provided API endpoint structure for searching by keyword
     const queryParams = new URLSearchParams({
       output: 'json',
       countrycode: 'ID',
-      maxresults: params.maxResults?.toString() || '10',
-      key: API_KEY,
-      latitude: params.latitude.toString(),
-      longitude: params.longitude.toString(),
-      distance: '50', // Increased search radius for better results
-      distanceunit: 'km'
+      stateorprovince: query, // Use the query as the stateorprovince parameter
+      maxresults: maxResults.toString(),
+      key: API_KEY || ''
     });
-
-    // Add search query if provided
-    if (query) {
-      queryParams.append('search', query);
-    }
     
+    console.log(`Searching stations with keyword: "${query}"`);
     const url = `${BASE_URL}/poi/?${queryParams.toString()}`;
     console.log("Search URL:", url);
     
@@ -197,25 +188,13 @@ export async function searchStations(
       throw new Error(`Failed to search stations: ${response.status}`);
     }
     
-    const data = await response.json() as ChargingStation[];
+    const data = await response.json();
     console.log("Search returned:", data.length, "results");
     
-    if (data.length === 0) {
-      toast({
-        title: "Tidak ada hasil",
-        description: `Tidak ada stasiun pengisian ditemukan untuk pencarian "${query}".`,
-      });
-      return [];
-    }
-
-    // Process the stations with proper distance calculation and status
-    const processedStations = data.map(station => ({
-      ...station,
-      status: determineStationStatus(station),
-      distance: station.addressInfo?.distance || 0
-    }));
+    // Map the raw API response to our ChargingStation format
+    const processedData = mapApiResponse(data);
     
-    return processedStations;
+    return processedData;
   } catch (error) {
     console.error('Error searching charging stations:', error);
     toast({
@@ -223,6 +202,67 @@ export async function searchStations(
       description: "Gagal mencari stasiun pengisian. Silakan coba lagi nanti.",
       variant: "destructive"
     });
+    return [];
+  }
+}
+
+// New helper function to handle the specific OpenChargeMap response format
+export function mapApiResponse(apiResponse: any[]): ChargingStation[] {
+  console.log("Mapping API response:", apiResponse.length, "items");
+  
+  if (!Array.isArray(apiResponse) || apiResponse.length === 0) {
+    console.log("Empty or invalid API response");
+    return [];
+  }
+  
+  try {
+    return apiResponse.map(item => {
+      // Log the structure of the first item to help debug
+      if (apiResponse.indexOf(item) === 0) {
+        console.log("First item structure:", JSON.stringify(item));
+      }
+      
+      // Map the OpenChargeMap response to our ChargingStation interface
+      return {
+        id: item.ID,
+        uuid: item.UUID,
+        addressInfo: {
+          id: item.AddressInfo.ID,
+          title: item.AddressInfo.Title,
+          addressLine1: item.AddressInfo.AddressLine1,
+          town: item.AddressInfo.Town,
+          stateOrProvince: item.AddressInfo.StateOrProvince,
+          postcode: item.AddressInfo.Postcode,
+          latitude: item.AddressInfo.Latitude,
+          longitude: item.AddressInfo.Longitude,
+          country: {
+            id: item.AddressInfo.CountryID,
+            isoCode: "",  // This might not be in the response
+            title: ""     // This might not be in the response
+          },
+          distance: item.AddressInfo.Distance
+        },
+        connections: (item.Connections || []).map((conn: any) => ({
+          id: conn.ID,
+          connectionType: {
+            id: conn.ConnectionTypeID,
+            title: conn.ConnectionType?.Title || "Unknown Type"
+          },
+          level: {
+            id: conn.LevelID,
+            title: conn.Level?.Title || "Unknown Level",
+            comments: conn.Level?.Comments || ""
+          },
+          powerKW: conn.PowerKW,
+          quantity: conn.Quantity
+        })),
+        usageCost: item.UsageCost || "Tidak ada informasi", // Add usage cost information
+        status: determineStationStatus(item),
+        distance: item.AddressInfo.Distance
+      };
+    });
+  } catch (error) {
+    console.error("Error mapping API response:", error);
     return [];
   }
 }
