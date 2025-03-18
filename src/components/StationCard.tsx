@@ -4,7 +4,7 @@ import { ChargingStation } from '../utils/api';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Navigation, Phone, Globe, Info, MapPin, Zap, Clock, ExternalLink, CreditCard, Plug, Cable } from 'lucide-react';
+import { Navigation, Phone, Globe, Info, MapPin, Zap, Clock, ExternalLink, CreditCard, Plug, Cable, Loader2 } from 'lucide-react';
 import { formatDistance } from '../utils/distance';
 import { cn } from '@/lib/utils';
 
@@ -12,12 +12,16 @@ interface StationCardProps {
   station: ChargingStation;
   onDirectionsClick: (station: ChargingStation) => void;
   className?: string;
+  isLoadingDirections?: boolean;
+  isActive?: boolean;
 }
 
 const StationCard: React.FC<StationCardProps> = ({ 
   station, 
   onDirectionsClick,
-  className
+  className,
+  isLoadingDirections = false,
+  isActive = false
 }) => {
   const { 
     addressInfo, 
@@ -44,7 +48,11 @@ const StationCard: React.FC<StationCardProps> = ({
   const highestPower = connections.reduce((max, conn) => Math.max(max, conn.powerKW || 0), 0);
 
   return (
-    <Card className={cn("w-full transition-all duration-300 hover:shadow-md", className)}>
+    <Card className={cn(
+      "w-full transition-all duration-300 hover:shadow-md", 
+      isActive && "border-blue-400 shadow-md bg-blue-50/30",
+      className
+    )}>
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start gap-2">
           <div>
@@ -124,9 +132,19 @@ const StationCard: React.FC<StationCardProps> = ({
         <Button 
           className="w-full bg-blue-500 hover:bg-blue-600 transition-all duration-200"
           onClick={() => onDirectionsClick(station)}
+          disabled={isLoadingDirections}
         >
-          <Navigation className="h-4 w-4 mr-2" />
-          Petunjuk Arah
+          {isLoadingDirections ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Menghitung Rute...
+            </>
+          ) : (
+            <>
+              <Navigation className="h-4 w-4 mr-2" />
+              Petunjuk Arah
+            </>
+          )}
         </Button>
         
         {operatorInfo?.websiteURL && (

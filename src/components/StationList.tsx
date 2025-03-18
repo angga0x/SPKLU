@@ -2,19 +2,18 @@
 import React from 'react';
 import { ChargingStation } from '../utils/api';
 import StationCard from './StationCard';
-import { Separator } from './ui/separator';
+import { ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
-import { ChevronUp, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ScrollArea } from './ui/scroll-area';
 
 interface StationListProps {
   stations: ChargingStation[];
   isLoading: boolean;
   onStationSelect: (station: ChargingStation) => void;
   onDirectionsClick: (station: ChargingStation) => void;
-  className?: string;
   expanded: boolean;
   onToggleExpand: () => void;
+  isLoadingDirections?: boolean;
 }
 
 const StationList: React.FC<StationListProps> = ({
@@ -22,75 +21,71 @@ const StationList: React.FC<StationListProps> = ({
   isLoading,
   onStationSelect,
   onDirectionsClick,
-  className,
   expanded,
-  onToggleExpand
+  onToggleExpand,
+  isLoadingDirections = false
 }) => {
+  // Get the active station (the one we're getting directions for)
+  const getActiveStationId = () => {
+    // For simplicity, we'll assume the active station is the one that directions are being loaded for
+    // In a real app, you'd track this state more explicitly
+    return isLoadingDirections ? stations[0]?.id : null;
+  };
+
   return (
-    <div className={cn(
-      "bg-background w-full transition-all duration-300 ease-in-out overflow-hidden", 
-      expanded ? "h-[75vh]" : "h-64",
-      className
-    )}>
-      {/* Header and Toggle */}
-      <div className="sticky top-0 z-10 bg-background px-4 py-3 flex items-center justify-between border-b">
-        <div>
-          <h2 className="font-medium">
-            {isLoading ? "Mencari..." : `${stations.length} Stasiun Ditemukan`}
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            {expanded ? "Tampilkan stasiun terdekat" : "Tampilkan stasiun terdekat"}
-          </p>
-        </div>
-        <Button 
-          variant="ghost" 
-          size="icon" 
+    <div className="p-4">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">
+          Stasiun Pengisian Terdekat
+        </h2>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="flex items-center text-muted-foreground hover:text-foreground"
           onClick={onToggleExpand}
-          className="h-8 w-8"
         >
-          <ChevronUp className={cn(
-            "h-5 w-5 transition-transform duration-300",
-            expanded ? "rotate-0" : "rotate-180"
-          )} />
-          <span className="sr-only">
-            {expanded ? "Collapse" : "Expand"}
-          </span>
+          {expanded ? (
+            <>
+              <ChevronDown className="h-4 w-4 mr-1" />
+              <span className="text-sm">Ciutkan</span>
+            </>
+          ) : (
+            <>
+              <ChevronUp className="h-4 w-4 mr-1" />
+              <span className="text-sm">Perluas</span>
+            </>
+          )}
         </Button>
       </div>
 
-      {/* Station List */}
-      <div className="overflow-y-auto h-[calc(100%-48px)]">
-        {isLoading ? (
-          <div className="flex items-center justify-center h-40">
-            <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
-          </div>
-        ) : stations.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-40 px-4 text-center">
-            <p className="text-muted-foreground">Tidak ada stasiun pengisian yang ditemukan</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Coba ubah lokasi atau kata kunci pencarian Anda
-            </p>
-          </div>
-        ) : (
-          <div className="p-4 space-y-4">
-            {stations.map((station, index) => (
-              <div
-                key={station.id}
-                className="cursor-pointer transition-all duration-200 hover:scale-[1.01]"
-                onClick={() => onStationSelect(station)}
-              >
-                <StationCard
-                  station={station}
-                  onDirectionsClick={onDirectionsClick}
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="mt-4 text-muted-foreground">Memuat stasiun pengisian...</p>
+        </div>
+      ) : stations.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Tidak ada stasiun pengisian ditemukan.</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Coba ubah lokasi Anda atau perluas area pencarian.
+          </p>
+        </div>
+      ) : (
+        <ScrollArea className={expanded ? "h-[60vh]" : "h-[230px]"}>
+          <div className="grid grid-cols-1 gap-4 pr-2">
+            {stations.map((station) => (
+              <div key={station.id} onClick={() => onStationSelect(station)}>
+                <StationCard 
+                  station={station} 
+                  onDirectionsClick={onDirectionsClick} 
+                  isLoadingDirections={isLoadingDirections && station.id === getActiveStationId()}
+                  isActive={station.id === getActiveStationId()}
                 />
-                {index < stations.length - 1 && (
-                  <Separator className="mt-4" />
-                )}
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </ScrollArea>
+      )}
     </div>
   );
 };

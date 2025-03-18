@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import Map from '../components/Map';
 import SearchBar from '../components/SearchBar';
@@ -5,6 +6,7 @@ import StationList from '../components/StationList';
 import LocationButton from '../components/LocationButton';
 import { ChargingStation, fetchNearbyStations, searchStations, mapApiResponse } from '../utils/api';
 import { calculateDistance } from '../utils/distance';
+import { getDirections } from '../utils/directions';
 import { toast } from '../components/ui/use-toast';
 import { Toaster } from '../components/ui/toaster';
 
@@ -17,6 +19,8 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [directionsRoute, setDirectionsRoute] = useState<GeoJSON.Feature | null>(null);
+  const [isLoadingDirections, setIsLoadingDirections] = useState(false);
   
   // UI state
   const [expanded, setExpanded] = useState(false);
@@ -214,10 +218,12 @@ const Index = () => {
   const handleStationSelect = useCallback((station: ChargingStation) => {
     setSelectedStation(station);
     setExpanded(false);
+    // Clear any existing directions when selecting a new station
+    setDirectionsRoute(null);
   }, []);
 
-  // Open directions in Google Maps
-  const handleDirectionsClick = useCallback((station: ChargingStation) => {
+  // Get directions using Mapbox Directions API
+  const handleDirectionsClick = useCallback(async (station: ChargingStation) => {
     if (!userLocation) {
       toast({
         variant: "destructive",
@@ -227,10 +233,44 @@ const Index = () => {
       return;
     }
     
-    const { latitude, longitude } = station.addressInfo;
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${userLocation.latitude},${userLocation.longitude}&destination=${latitude},${longitude}&travelmode=driving`;
+    setIsLoadingDirections(true);
+    toast({
+      title: "Memuat rute",
+      description: "Sedang menghitung rute terbaik ke stasiun pengisian...",
+    });
     
-    window.open(url, '_blank');
+    try {
+      const route = await getDirections({
+        origin: [userLocation.latitude, userLocation.longitude],
+        destination: [station.addressInfo.latitude, station.addressInfo.longitude],
+        apiKey: 'pk.eyJ1IjoiYW5nZzB4IiwiYSI6ImNtOGU0b3ZleDAzMW4ycW9mbHY1YXhtdTQifQ.cZL2sxCvBSXQDSqZ1aL-hQ' // Mapbox API key
+      });
+      
+      if (route) {
+        setDirectionsRoute(route);
+        setSelectedStation(station);
+        
+        toast({
+          title: "Rute berhasil dihitung",
+          description: `Jarak: ${(route.properties?.distance / 1000).toFixed(1)} km, Waktu: ${Math.round(route.properties?.duration / 60)} menit`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error rute",
+          description: "Gagal menghitung rute ke stasiun pengisian.",
+        });
+      }
+    } catch (error) {
+      console.error("Directions error:", error);
+      toast({
+        variant: "destructive",
+        title: "Error rute",
+        description: "Gagal mendapatkan petunjuk arah. Silakan coba lagi nanti.",
+      });
+    } finally {
+      setIsLoadingDirections(false);
+    }
   }, [userLocation]);
 
   // Load stations when user location changes
@@ -273,6 +313,7 @@ const Index = () => {
           userLocation={userLocation}
           onStationClick={handleStationSelect}
           selectedStation={selectedStation}
+          directionsRoute={directionsRoute}
         />
       </div>
       
@@ -295,6 +336,7 @@ const Index = () => {
           <p>Filtered Stations: {filteredStations.length}</p>
           <p>API Key: {API_KEY_SUBSTRING}</p>
           <p>Loading: {isLoading ? 'Yes' : 'No'}</p>
+          <p>Directions: {directionsRoute ? 'Active' : 'None'}</p>
         </div>
       )}
       
@@ -307,6 +349,7 @@ const Index = () => {
           onDirectionsClick={handleDirectionsClick}
           expanded={expanded}
           onToggleExpand={() => setExpanded(!expanded)}
+          isLoadingDirections={isLoadingDirections}
         />
       </div>
     </div>

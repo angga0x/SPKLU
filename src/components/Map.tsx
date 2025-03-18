@@ -11,6 +11,7 @@ interface MapProps {
   onStationClick: (station: ChargingStation) => void;
   selectedStation: ChargingStation | null;
   apiKey?: string;
+  directionsRoute?: GeoJSON.Feature | null;
 }
 
 const Map: React.FC<MapProps> = ({ 
@@ -18,13 +19,15 @@ const Map: React.FC<MapProps> = ({
   userLocation, 
   onStationClick,
   selectedStation,
-  apiKey = 'pk.eyJ1IjoiYW5nZzB4IiwiYSI6ImNtOGU0b3ZleDAzMW4ycW9mbHY1YXhtdTQifQ.cZL2sxCvBSXQDSqZ1aL-hQ' // Default to the provided API key
+  apiKey = 'pk.eyJ1IjoiYW5nZzB4IiwiYSI6ImNtOGU0b3ZleDAzMW4ycW9mbHY1YXhtdTQifQ.cZL2sxCvBSXQDSqZ1aL-hQ', // Default to the provided API key
+  directionsRoute
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const routeRef = useRef<string | null>(null);
 
   // Initialize the map
   useEffect(() => {
@@ -85,6 +88,50 @@ const Map: React.FC<MapProps> = ({
     map.current.on('load', () => {
       console.log("Map loaded successfully");
       setMapLoaded(true);
+      
+      // Add source and layers for the directions route
+      map.current!.addSource('route', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: []
+          }
+        }
+      });
+      
+      map.current!.addLayer({
+        id: 'route',
+        type: 'line',
+        source: 'route',
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round'
+        },
+        paint: {
+          'line-color': '#3b82f6',
+          'line-width': 6,
+          'line-opacity': 0.8
+        }
+      });
+      
+      // Add outline for the route
+      map.current!.addLayer({
+        id: 'route-outline',
+        type: 'line',
+        source: 'route',
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round'
+        },
+        paint: {
+          'line-color': '#ffffff',
+          'line-width': 10,
+          'line-opacity': 0.4
+        }
+      }, 'route');
     });
 
     // Clean up on unmount
@@ -223,6 +270,33 @@ const Map: React.FC<MapProps> = ({
     }
   }, [stations, mapLoaded, selectedStation, onStationClick]);
 
+  // Update directions route on the map
+  useEffect(() => {
+    if (!map.current || !mapLoaded || !directionsRoute) return;
+    
+    console.log("Updating route on map");
+    
+    // Update the route source with new data
+    if (map.current.getSource('route')) {
+      (map.current.getSource('route') as mapboxgl.GeoJSONSource).setData(directionsRoute);
+    }
+    
+    // Fit the map to the route bounds if available
+    if (directionsRoute.properties?.bbox) {
+      const [minLng, minLat, maxLng, maxLat] = directionsRoute.properties.bbox as number[];
+      map.current.fitBounds(
+        [
+          [minLng, minLat],
+          [maxLng, maxLat]
+        ],
+        {
+          padding: 50,
+          duration: 1000
+        }
+      );
+    }
+  }, [directionsRoute, mapLoaded]);
+
   return (
     <div className="relative w-full h-full rounded-xl overflow-hidden bg-gray-100">
       <div ref={mapContainer} className="map-container h-full w-full" />
@@ -238,6 +312,17 @@ const Map: React.FC<MapProps> = ({
         </p>
       </div>
       
+      {/* Route info overlay - only shown when directions are active */}
+      {directionsRoute && directionsRoute.properties?.distance && directionsRoute.properties?.duration && (
+        <div className="absolute bottom-4 right-4 bg-white p-3 rounded-lg shadow-md">
+          <div className="text-sm">
+            <p className="font-medium">Info Rute</p>
+            <p>Jarak: {(directionsRoute.properties.distance / 1000).toFixed(1)} km</p>
+            <p>Waktu: {Math.round(directionsRoute.properties.duration / 60)} menit</p>
+          </div>
+        </div>
+      )}
+      
       {/* Debug info - only shown in development */}
       {process.env.NODE_ENV === 'development' && (
         <div className="absolute top-20 right-4 bg-white bg-opacity-80 p-2 rounded-lg shadow-md max-w-xs text-xs overflow-auto max-h-40">
@@ -246,6 +331,7 @@ const Map: React.FC<MapProps> = ({
           <p>User Location: {userLocation ? `${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)}` : 'None'}</p>
           <p>Stations Count: {stations.length}</p>
           <p>Markers Count: {markersRef.current.length}</p>
+          <p>Directions: {directionsRoute ? 'Active' : 'None'}</p>
         </div>
       )}
     </div>
