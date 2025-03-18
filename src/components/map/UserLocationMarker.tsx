@@ -9,11 +9,13 @@ interface UserLocationMarkerProps {
 }
 
 export const createUserLocationMarker = ({ map, location, markerRef }: UserLocationMarkerProps) => {
+  // Remove existing marker if it exists
   if (markerRef.current) {
     markerRef.current.remove();
     markerRef.current = null;
   }
 
+  // Create marker element
   const userMarkerElement = document.createElement('div');
   userMarkerElement.className = 'user-marker flex items-center justify-center relative';
   userMarkerElement.style.width = '24px';
@@ -27,10 +29,12 @@ export const createUserLocationMarker = ({ map, location, markerRef }: UserLocat
   pulseRing.className = 'absolute w-12 h-12 rounded-full border-4 border-blue-300 animate-ping';
   userMarkerElement.appendChild(pulseRing);
 
+  // Create and store the marker
   markerRef.current = new mapboxgl.Marker(userMarkerElement)
     .setLngLat([location.longitude, location.latitude])
     .addTo(map);
 
+  // Fly to the user location
   map.flyTo({
     center: [location.longitude, location.latitude],
     zoom: 13,

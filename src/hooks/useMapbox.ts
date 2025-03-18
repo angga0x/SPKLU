@@ -52,16 +52,8 @@ export const useMapbox = ({ apiKey, defaultLocation, onStationClick }: UseMapbox
       'bottom-right'
     );
 
-    map.current.addControl(
-      new mapboxgl.GeolocateControl({
-        positionOptions: {
-          enableHighAccuracy: true
-        },
-        trackUserLocation: true,
-        showUserHeading: true
-      }),
-      'top-right'
-    );
+    // Remove the GeolocateControl to prevent duplicate markers
+    // since we'll handle our own user location marker
 
     map.current.on('load', () => {
       console.log("Map loaded successfully");
@@ -112,6 +104,12 @@ export const useMapbox = ({ apiKey, defaultLocation, onStationClick }: UseMapbox
   };
 
   const clearMap = () => {
+    // Clear user marker when cleaning up
+    if (userMarkerRef.current) {
+      userMarkerRef.current.remove();
+      userMarkerRef.current = null;
+    }
+    
     if (map.current) {
       map.current.remove();
       map.current = null;

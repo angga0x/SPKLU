@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+
+import React, { useEffect, useRef } from 'react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { ChargingStation } from '../utils/api';
 import { useMapbox } from '../hooks/useMapbox';
@@ -34,6 +35,12 @@ const Map: React.FC<MapProps> = ({
     clearMap
   } = useMapbox({ apiKey, defaultLocation: userLocation, onStationClick });
 
+  // Store previous user location to avoid updating marker unnecessarily
+  const prevUserLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  
+  // Use a separate ref to track if the vehicle marker is shown
+  const vehicleMarkerShown = useRef<boolean>(false);
+
   const { location: liveLocation } = useLiveTracking({
     enabled: true,
     updateInterval: 5000
@@ -45,25 +52,46 @@ const Map: React.FC<MapProps> = ({
     return () => clearMap();
   }, [apiKey]);
 
-  // Handle live location updates
+  // Handle live location updates - create vehicle marker only if different from user position
   useEffect(() => {
     if (!map.current || !mapLoaded || !liveLocation) return;
+    
+    // Only show vehicle marker if we're actively tracking and moving
+    // and it's different from the static user location marker
+    if (userLocation && 
+        Math.abs(liveLocation.latitude - userLocation.latitude) > 0.0001 && 
+        Math.abs(liveLocation.longitude - userLocation.longitude) > 0.0001) {
+      
+      createVehicleMarker({
+        map: map.current,
+        location: liveLocation
+      });
+      
+      vehicleMarkerShown.current = true;
+    }
+  }, [liveLocation, mapLoaded, userLocation]);
 
-    createVehicleMarker({
-      map: map.current,
-      location: liveLocation
-    });
-
-  }, [liveLocation, mapLoaded]);
-
-  // Handle user location updates
+  // Handle user location updates - ensure we only create marker when location actually changes
   useEffect(() => {
     if (!map.current || !mapLoaded || !userLocation) return;
-    createUserLocationMarker({
-      map: map.current,
-      location: userLocation,
-      markerRef: userMarkerRef
-    });
+    
+    // Check if location has changed
+    const locationChanged = 
+      !prevUserLocationRef.current || 
+      prevUserLocationRef.current.latitude !== userLocation.latitude ||
+      prevUserLocationRef.current.longitude !== userLocation.longitude;
+    
+    if (locationChanged) {
+      // Update marker with new location
+      createUserLocationMarker({
+        map: map.current,
+        location: userLocation,
+        markerRef: userMarkerRef
+      });
+      
+      // Update previous location
+      prevUserLocationRef.current = userLocation;
+    }
   }, [userLocation, mapLoaded]);
 
   // Handle stations updates
