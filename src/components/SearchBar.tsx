@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
-import { Search, MapPin, X, Loader2 } from 'lucide-react';
+import { Search, LocateFixed, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SearchBarProps {
@@ -84,7 +84,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
         {isLocating ? (
           <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
         ) : (
-          <MapPin className="h-5 w-5 text-blue-500" />
+          <LocateFixed className="h-5 w-5 text-blue-500" />
         )}
         <span className="sr-only">Use current location</span>
       </Button>

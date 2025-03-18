@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import Map from '../components/Map';
 import SearchBar from '../components/SearchBar';
@@ -43,7 +42,7 @@ const Index = () => {
         console.log("No stations found, checking if response needs mapping");
         
         // This is a fallback in case the data doesn't match our expected format
-        const response = await fetch(`https://api.openchargemap.io/v3/poi/?latitude=${userLocation.latitude}&longitude=${userLocation.longitude}&distance=15&distanceunit=km&maxresults=100&compact=true&verbose=false&output=json&key=d7609f7a-6dca-4bd4-a531-ce798439da2c`);
+        const response = await fetch(`https://api.openchargemap.io/v3/poi/?latitude=${userLocation.latitude}&longitude=${userLocation.longitude}&distance=15&distanceunit=km&maxresults=100&verbose=false&output=json&key=d7609f7a-6dca-4bd4-a531-ce798439da2c`);
         
         if (response.ok) {
           const rawData = await response.json();

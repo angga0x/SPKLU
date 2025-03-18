@@ -96,7 +96,6 @@ export async function fetchNearbyStations(params: SearchParams): Promise<Chargin
       distance: distance.toString(),
       distanceunit: 'km',
       maxresults: maxResults.toString(),
-      compact: 'true',
       verbose: 'false',
       output: 'json',
       key: API_KEY || ''
@@ -176,7 +175,6 @@ export async function searchStations(
       distance: distance.toString(),
       distanceunit: 'km',
       maxresults: maxResults.toString(),
-      compact: 'true',
       verbose: 'false',
       output: 'json',
       key: API_KEY || '',

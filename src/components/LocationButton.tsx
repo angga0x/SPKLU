@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from './ui/button';
-import { MapPin, Loader2 } from 'lucide-react';
+import { Loader2, MapPin, Locate, LocateFixed } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LocationButtonProps {
@@ -33,7 +33,7 @@ const LocationButton: React.FC<LocationButtonProps> = ({
         </>
       ) : (
         <>
-          <MapPin className="h-5 w-5 mr-2" />
+          <LocateFixed className="h-5 w-5 mr-2 text-blue-500" />
           Gunakan Lokasi Saat Ini
         </>
       )}
