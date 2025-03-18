@@ -39,7 +39,14 @@ export const createStationMarker = ({ station, map, onStationClick }: CreateStat
     className: 'custom-popup rounded-lg shadow-lg'
   }).setHTML(`
     <div class="p-3 text-sm">
-      <div class="mb-2">
+      <button class="popup-close absolute right-2 top-2 w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      
+      <div class="mb-2 pr-6">
         <h3 class="font-bold text-base text-gray-900 dark:text-gray-100">${station.addressInfo.title}</h3>
         <div class="flex items-center mt-1">
           <div class="w-2 h-2 rounded-full ${
@@ -87,18 +94,20 @@ export const createStationMarker = ({ station, map, onStationClick }: CreateStat
         }">${station.usageCost || 'Price unknown'}</p>
       </div>
       
-      <button class="mt-2 w-full px-3 py-1.5 text-xs font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600 transition-colors" 
-        onclick="document.dispatchEvent(new CustomEvent('station-select', {detail: '${station.id}'}))">
+      <button class="mt-2 w-full px-3 py-1.5 text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 active:bg-blue-700 rounded-md transition-colors" 
+        onclick="window.dispatchEvent(new CustomEvent('get-directions', {detail: '${station.id}'}))">
         Dapatkan petunjuk arah
       </button>
     </div>
   `);
 
-  document.addEventListener('station-select', (e: Event) => {
+  // Use window event listener instead of document for better accessibility
+  window.addEventListener('get-directions', (e: Event) => {
     const customEvent = e as CustomEvent;
     const selectedId = customEvent.detail;
     if (selectedId === station.id.toString()) {
       onStationClick(station);
+      popup.remove(); // Close popup after clicking directions
     }
   });
 
@@ -106,7 +115,7 @@ export const createStationMarker = ({ station, map, onStationClick }: CreateStat
     element: markerElement,
     anchor: 'center',
   })
-    .setLngLat([longitude, latitude])
+    .setLngLat([station.addressInfo.longitude, station.addressInfo.latitude])
     .setPopup(popup)
     .addTo(map);
 
