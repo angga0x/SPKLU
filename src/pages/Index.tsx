@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import Map from '../components/Map';
 import SearchBar from '../components/SearchBar';
@@ -162,48 +161,34 @@ const Index = () => {
       return;
     }
     
-    if (!query.trim()) {
-      setFilteredStations(stations);
-      return;
-    }
-    
     setIsLoading(true);
     try {
-      let results;
+      console.log(`Searching for stations with query: "${query}"`);
       
-      // If we already have stations loaded, filter them locally
-      if (stations.length > 0 && query.trim()) {
-        results = stations.filter(station => {
-          const name = station.addressInfo.title.toLowerCase();
-          const address = `${station.addressInfo.addressLine1} ${station.addressInfo.town}`.toLowerCase();
-          const searchTerms = query.toLowerCase();
-          
-          return name.includes(searchTerms) || address.includes(searchTerms);
-        });
-      } else {
-        // Otherwise, fetch from API
-        results = await searchStations(query, {
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
-          distance: 50
-        });
-        
-        // Calculate distance
-        results = results.map(station => ({
-          ...station,
-          distance: calculateDistance(
-            { latitude: userLocation.latitude, longitude: userLocation.longitude },
-            { latitude: station.addressInfo.latitude, longitude: station.addressInfo.longitude }
-          )
-        }));
-        
-        // Sort by distance
-        results.sort((a, b) => (a.distance || 0) - (b.distance || 0));
-      }
+      // Use the searchStations API function with the new endpoint
+      const results = await searchStations(query, {
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        maxResults: 10
+      });
       
-      setFilteredStations(results);
+      console.log(`Search returned ${results.length} stations`);
       
-      if (results.length === 0) {
+      // Calculate distance
+      const resultsWithDistance = results.map(station => ({
+        ...station,
+        distance: calculateDistance(
+          { latitude: userLocation.latitude, longitude: userLocation.longitude },
+          { latitude: station.addressInfo.latitude, longitude: station.addressInfo.longitude }
+        )
+      }));
+      
+      // Sort by distance
+      resultsWithDistance.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+      
+      setFilteredStations(resultsWithDistance);
+      
+      if (resultsWithDistance.length === 0) {
         toast({
           title: "Tidak ada hasil",
           description: "Tidak ada stasiun pengisian yang cocok dengan pencarian Anda.",
@@ -211,7 +196,7 @@ const Index = () => {
       } else {
         toast({
           title: "Hasil pencarian",
-          description: `${results.length} stasiun pengisian ditemukan.`,
+          description: `${resultsWithDistance.length} stasiun pengisian ditemukan.`,
         });
       }
     } catch (error) {
@@ -224,7 +209,7 @@ const Index = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [stations, userLocation, getUserLocation]);
+  }, [userLocation, getUserLocation]);
 
   // Handle station selection
   const handleStationSelect = useCallback((station: ChargingStation) => {

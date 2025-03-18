@@ -167,41 +167,39 @@ export async function searchStations(
       return fetchNearbyStations(params);
     }
     
-    const { latitude, longitude, distance = 50, maxResults = 100 } = params;
+    const { maxResults = 10 } = params;
     
+    // Using the provided API endpoint structure for searching by keyword
     const queryParams = new URLSearchParams({
-      latitude: latitude.toString(),
-      longitude: longitude.toString(),
-      distance: distance.toString(),
-      distanceunit: 'km',
-      maxresults: maxResults.toString(),
-      verbose: 'false',
       output: 'json',
-      key: API_KEY || '',
-      keywords: query
+      countrycode: 'ID',
+      stateorprovince: query, // Use the query as the stateorprovince parameter
+      maxresults: maxResults.toString(),
+      key: API_KEY || ''
     });
     
-    const response = await fetch(`${BASE_URL}/poi/?${queryParams.toString()}`);
+    console.log(`Searching stations with keyword: "${query}"`);
+    const url = `${BASE_URL}/poi/?${queryParams.toString()}`;
+    console.log("Search URL:", url);
+    
+    const response = await fetch(url);
     
     if (!response.ok) {
       throw new Error(`Failed to search stations: ${response.status}`);
     }
     
-    const data = await response.json() as ChargingStation[];
+    const data = await response.json();
+    console.log("Search returned:", data.length, "results");
     
-    const processedData = data.map(station => ({
-      ...station,
-      status: determineStationStatus(station),
-      // Ensure distance is properly set if it's in the addressInfo
-      distance: station.distance || station.addressInfo.distance
-    }));
+    // Map the raw API response to our ChargingStation format
+    const processedData = mapApiResponse(data);
     
     return processedData;
   } catch (error) {
     console.error('Error searching charging stations:', error);
     toast({
       title: "Error",
-      description: "Failed to search charging stations. Please try again later.",
+      description: "Gagal mencari stasiun pengisian. Silakan coba lagi nanti.",
       variant: "destructive"
     });
     return [];
