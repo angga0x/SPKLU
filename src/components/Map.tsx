@@ -226,15 +226,79 @@ const Map: React.FC<MapProps> = ({
 
       console.log(`Adding marker at: [${longitude}, ${latitude}] for station: ${station.addressInfo.title}`);
 
-      // Create popup for the marker
-      const popup = new mapboxgl.Popup({ offset: 25 })
-        .setHTML(`
-          <div class="p-2">
-            <h3 class="font-bold">${station.addressInfo.title}</h3>
-            <p class="text-sm">${station.addressInfo.addressLine1}</p>
-            <p class="text-xs mt-1">${station.distance?.toFixed(1)} km</p>
+      // Create enhanced popup for the marker
+      const popup = new mapboxgl.Popup({
+        offset: 25,
+        closeButton: true,
+        closeOnClick: false,
+        maxWidth: '300px',
+        className: 'custom-popup'
+      }).setHTML(`
+        <div class="p-3 text-sm">
+          <div class="mb-2">
+            <h3 class="font-bold text-base text-gray-900 dark:text-gray-100">${station.addressInfo.title}</h3>
+            <div class="flex items-center mt-1">
+              <div class="w-2 h-2 rounded-full ${
+                station.status === 'available' ? 'bg-green-500' : 
+                station.status === 'busy' ? 'bg-yellow-500' : 'bg-red-500'
+              } mr-1.5"></div>
+              <span class="text-xs font-medium ${
+                station.status === 'available' ? 'text-green-700 dark:text-green-400' : 
+                station.status === 'busy' ? 'text-yellow-700 dark:text-yellow-400' : 'text-red-700 dark:text-red-400'
+              } capitalize">${station.status || 'Unknown'}</span>
+            </div>
           </div>
-        `);
+          
+          <div class="border-t border-gray-200 dark:border-gray-700 my-2 pt-2">
+            <p class="text-xs text-gray-600 dark:text-gray-300">${station.addressInfo.addressLine1 || ''}</p>
+            <p class="text-xs text-gray-600 dark:text-gray-300">
+              ${station.addressInfo.town || ''}${station.addressInfo.town && station.addressInfo.stateOrProvince ? ', ' : ''}${station.addressInfo.stateOrProvince || ''}
+            </p>
+          </div>
+          
+          ${station.connections && station.connections.length > 0 ? `
+            <div class="border-t border-gray-200 dark:border-gray-700 my-2 pt-2">
+              <p class="text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Charging Details:</p>
+              <div class="flex flex-col gap-1">
+                ${station.connections.map(conn => `
+                  <div class="flex items-center text-xs text-gray-600 dark:text-gray-300">
+                    <svg class="w-3 h-3 mr-1 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M7 2h10"></path><path d="M9 11V7"></path><path d="M15 11V7"></path>
+                      <path d="M11 15v-3a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z"></path>
+                    </svg>
+                    ${conn.connectionType?.title || 'Unknown'} • ${conn.powerKW ? conn.powerKW + ' kW' : 'Unknown power'}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+          
+          <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+            <p class="text-xs font-medium text-blue-600 dark:text-blue-400">
+              ${station.distance ? station.distance.toFixed(1) + ' km away' : 'Distance unknown'}
+            </p>
+            <p class="text-xs font-medium ${
+              station.usageCost === 'Rp0/kWh' || station.usageCost === 'Free' ? 
+              'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-300'
+            }">${station.usageCost || 'Price unknown'}</p>
+          </div>
+          
+          <button class="mt-2 w-full px-3 py-1.5 text-xs font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600 transition-colors" 
+            onclick="document.dispatchEvent(new CustomEvent('station-select', {detail: '${station.id}'}))">
+            View Details
+          </button>
+        </div>
+      `);
+
+      // Set up event listener for the custom button
+      document.addEventListener('station-select', (e: Event) => {
+        const customEvent = e as CustomEvent;
+        const selectedId = customEvent.detail;
+        const selectedStation = stations.find(s => s.id.toString() === selectedId);
+        if (selectedStation) {
+          onStationClick(selectedStation);
+        }
+      });
 
       // Create marker
       const marker = new mapboxgl.Marker(markerElement)
