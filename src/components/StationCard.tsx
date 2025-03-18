@@ -4,7 +4,7 @@ import { ChargingStation } from '../utils/api';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Navigation, Phone, Globe, Info, MapPin, Zap, Clock, ExternalLink, CreditCard } from 'lucide-react';
+import { Navigation, Phone, Globe, Info, MapPin, Zap, Clock, ExternalLink, CreditCard, Plug, Cable } from 'lucide-react';
 import { formatDistance } from '../utils/distance';
 import { cn } from '@/lib/utils';
 
@@ -95,9 +95,17 @@ const StationCard: React.FC<StationCardProps> = ({
           <div className="space-y-2">
             {connections.slice(0, 3).map((connection, index) => (
               <div key={index} className="flex items-center justify-between text-sm p-2 bg-secondary rounded-md">
-                <div className="flex items-center">
-                  <Zap className="h-4 w-4 mr-2 text-blue-500" />
-                  <span>{connection.connectionType.title}</span>
+                <div className="flex flex-col">
+                  <div className="flex items-center mb-1">
+                    <Plug className="h-4 w-4 mr-2 text-blue-500" />
+                    <span className="font-medium">{connection.connectionType.title}</span>
+                  </div>
+                  {connection.currentType && (
+                    <div className="text-xs text-muted-foreground ml-6">
+                      {connection.currentType.title}
+                      {connection.quantity > 1 && ` (${connection.quantity}x)`}
+                    </div>
+                  )}
                 </div>
                 <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
                   {connection.powerKW} kW
