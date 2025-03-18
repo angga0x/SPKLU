@@ -337,15 +337,17 @@ const Index = () => {
     <div className="relative h-screen w-full bg-background overflow-hidden">
       <Toaster />
       
-      {/* Search Bar - Made responsive */}
-      <div className="absolute top-4 left-0 right-0 z-10 px-4 md:px-6 mx-auto max-w-2xl animate-fade-in">
-        <SearchBar 
-          onSearch={handleSearch}
-          onLocationSearch={handleLocationSearch}
-          isLoading={isLoading}
-          onGetUserLocation={getUserLocation}
-          isLocating={isLocating}
-        />
+      {/* Search Bar - Repositioned for mobile to avoid covering map controls */}
+      <div className="absolute top-4 left-0 right-0 z-10 px-4 md:px-6 mx-auto max-w-2xl animate-fade-in flex justify-center">
+        <div className="w-full md:w-full lg:w-[32rem] mr-8 sm:mr-12 md:mr-16">
+          <SearchBar 
+            onSearch={handleSearch}
+            onLocationSearch={handleLocationSearch}
+            isLoading={isLoading}
+            onGetUserLocation={getUserLocation}
+            isLocating={isLocating}
+          />
+        </div>
       </div>
       
       {/* Map */}
