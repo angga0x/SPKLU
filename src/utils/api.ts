@@ -137,24 +137,20 @@ const API_KEY = 'd7609f7a-6dca-4bd4-a531-ce798439da2c';
 
 export async function fetchNearbyStations(params: SearchParams): Promise<ChargingStation[]> {
   try {
-    const { latitude, longitude, distance = 15, maxResults = 100, countryCode } = params;
+    const { latitude, longitude, distance = 50, maxResults = 10 } = params;
     
     console.log("Fetching stations with params:", { latitude, longitude, distance, maxResults });
     
     const queryParams = new URLSearchParams({
+      output: 'json',
+      countrycode: 'ID',
       latitude: latitude.toString(),
       longitude: longitude.toString(),
       distance: distance.toString(),
-      distanceunit: 'km',
+      distanceunit: 'KM',
       maxresults: maxResults.toString(),
-      verbose: 'false',
-      output: 'json',
       key: API_KEY || ''
     });
-    
-    if (countryCode) {
-      queryParams.append('countrycode', countryCode);
-    }
 
     const url = `${BASE_URL}/poi/?${queryParams.toString()}`;
     console.log("Fetching from URL:", url);
