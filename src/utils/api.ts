@@ -80,8 +80,8 @@ export interface SearchParams {
 }
 
 const BASE_URL = 'https://api.openchargemap.io/v3';
-// We're using a client-side API key here as it's publicly available and rate-limited
-const API_KEY = '123'; // Optional: users will be asked to provide their own key
+// Using the provided API key for OpenChargeMap
+const API_KEY = 'd7609f7a-6dca-4bd4-a531-ce798439da2c';
 
 export async function fetchNearbyStations(params: SearchParams): Promise<ChargingStation[]> {
   try {
