@@ -1,10 +1,11 @@
-
 import React, { useEffect } from 'react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { ChargingStation } from '../utils/api';
 import { useMapbox } from '../hooks/useMapbox';
 import { createUserLocationMarker } from './map/UserLocationMarker';
 import { createStationMarker } from './map/StationMarker';
+import { createVehicleMarker } from './map/VehicleMarker';
+import { useLiveTracking } from '../hooks/useLiveTracking';
 
 interface MapProps {
   stations: ChargingStation[];
@@ -33,11 +34,27 @@ const Map: React.FC<MapProps> = ({
     clearMap
   } = useMapbox({ apiKey, defaultLocation: userLocation, onStationClick });
 
+  const { location: liveLocation } = useLiveTracking({
+    enabled: true,
+    updateInterval: 5000
+  });
+
   // Initialize map
   useEffect(() => {
     initializeMap();
     return () => clearMap();
   }, [apiKey]);
+
+  // Handle live location updates
+  useEffect(() => {
+    if (!map.current || !mapLoaded || !liveLocation) return;
+
+    createVehicleMarker({
+      map: map.current,
+      location: liveLocation
+    });
+
+  }, [liveLocation, mapLoaded]);
 
   // Handle user location updates
   useEffect(() => {
@@ -135,6 +152,7 @@ const Map: React.FC<MapProps> = ({
         <div className="absolute top-20 right-4 bg-white bg-opacity-80 p-2 rounded-lg shadow-md max-w-xs text-xs overflow-auto max-h-40">
           <p className="font-medium">Debug Info:</p>
           <p>Map Loaded: {mapLoaded ? 'Yes' : 'No'}</p>
+          <p>Live Location: {liveLocation ? `${liveLocation.latitude.toFixed(4)}, ${liveLocation.longitude.toFixed(4)}` : 'None'}</p>
           <p>User Location: {userLocation ? `${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)}` : 'None'}</p>
           <p>Stations Count: {stations.length}</p>
           <p>Markers Count: {markersRef.current.length}</p>

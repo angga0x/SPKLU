@@ -187,4 +187,24 @@
   .user-marker {
     @apply w-8 h-8 rounded-full bg-blue-500 border-2 border-white shadow-lg flex items-center justify-center text-white;
   }
+
+  .vehicle-marker {
+    transition: transform 1s ease-out;
+    will-change: transform;
+  }
+
+  .vehicle-marker .pulse-ring {
+    animation: pulse 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+      opacity: 0.5;
+    }
+    100% {
+      transform: scale(2);
+      opacity: 0;
+    }
+  }
 }
