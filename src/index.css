@@ -125,18 +125,25 @@
   }
 
   .mapboxgl-popup-close-button {
-    @apply text-lg p-2 text-foreground;
-    padding: 8px 12px;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 16px;
+    background: white;
+    border: 1px solid #e5e7eb;
     color: #6b7280;
-    background: transparent;
-    z-index: 10;
-    transition: color 0.2s ease;
+    top: 8px;
+    right: 8px;
+    transition: all 0.2s;
   }
 
   .mapboxgl-popup-close-button:hover {
-    color: #1f2937;
-    background: transparent;
+    background: #f3f4f6;
+    color: #374151;
   }
 
   .custom-popup .mapboxgl-popup-content {
