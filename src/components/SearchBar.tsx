@@ -47,7 +47,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   return (
     <form 
       className={cn(
-        "relative flex items-center transition-all duration-300",
+        "relative flex items-center max-w-md mx-auto transition-all duration-300",
         isFocused ? "scale-[1.02]" : "scale-100",
         className
       )}
@@ -57,28 +57,28 @@ const SearchBar: React.FC<SearchBarProps> = ({
         <Input
           ref={inputRef}
           type="text"
-          placeholder="Cari stasiun pengisian kendaraan listrik..."
+          placeholder="Cari stasiun..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyPress={handleKeyPress}
           className={cn(
-            "pl-10 pr-10 h-12 text-base bg-white dark:bg-gray-900 border-blue-100 dark:border-gray-700 shadow-sm transition-all duration-200",
+            "pl-8 pr-8 h-10 text-sm bg-white dark:bg-gray-900 border-blue-100 dark:border-gray-700 shadow-sm transition-all duration-200",
             isFocused ? "shadow-md border-blue-300 dark:border-blue-700" : ""
           )}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           disabled={isLoading}
         />
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         {query && (
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground hover:text-foreground"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
             onClick={handleClear}
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
             <span className="sr-only">Clear search</span>
           </Button>
         )}
@@ -86,28 +86,28 @@ const SearchBar: React.FC<SearchBarProps> = ({
       <Button
         type="button"
         variant="outline"
-        size="icon"
-        className="ml-2 h-12 w-12 border-blue-100 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm"
+        size="sm"
+        className="ml-1 h-10 w-10 border-blue-100 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm"
         onClick={onGetUserLocation}
         disabled={isLocating}
       >
         {isLocating ? (
-          <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+          <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
         ) : (
-          <LocateFixed className="h-5 w-5 text-blue-500" />
+          <LocateFixed className="h-4 w-4 text-blue-500" />
         )}
         <span className="sr-only">Use current location</span>
       </Button>
       <Button 
         type="submit" 
-        className="ml-2 h-12 px-4 bg-blue-500 hover:bg-blue-600"
+        className="ml-1 h-10 px-3 bg-blue-500 hover:bg-blue-600 text-xs"
         disabled={isLoading}
       >
         {isLoading ? (
-          <Loader2 className="h-5 w-5 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
           <>
-            <Search className="h-5 w-5 mr-2" />
+            <Search className="h-4 w-4 mr-1" />
             Cari
           </>
         )}
