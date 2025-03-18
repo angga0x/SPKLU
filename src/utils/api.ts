@@ -1,4 +1,3 @@
-
 import { toast } from "../components/ui/use-toast";
 
 export interface ChargingStation {
@@ -82,7 +81,6 @@ export interface SearchParams {
 }
 
 const BASE_URL = 'https://api.openchargemap.io/v3';
-// Using the provided API key for OpenChargeMap
 const API_KEY = 'd7609f7a-6dca-4bd4-a531-ce798439da2c';
 
 export async function fetchNearbyStations(params: SearchParams): Promise<ChargingStation[]> {
@@ -117,24 +115,28 @@ export async function fetchNearbyStations(params: SearchParams): Promise<Chargin
     
     const data = await response.json() as ChargingStation[];
     console.log("Received data:", data.length, "stations");
-    console.log("First station sample:", data[0] ? JSON.stringify(data[0].addressInfo) : "No stations found");
     
-    // Add status for UI rendering based on station information
+    if (data.length === 0) {
+      toast({
+        title: "Tidak ada hasil",
+        description: "Tidak ada stasiun pengisian di sekitar lokasi ini.",
+      });
+      return [];
+    }
+
+    // Process the stations with proper distance calculation and status
     const processedData = data.map(station => ({
       ...station,
       status: determineStationStatus(station),
-      // Ensure distance is properly set if it's in the addressInfo
-      distance: station.distance || station.addressInfo.distance
+      distance: station.addressInfo?.distance || 0
     }));
-    
+
     return processedData;
   } catch (error) {
     console.error('Error fetching charging stations:', error);
-    console.log('Error details:', error instanceof Error ? error.message : String(error));
-    
     toast({
       title: "Error",
-      description: "Failed to load charging stations. Please try again later.",
+      description: "Gagal memuat stasiun pengisian. Silakan coba lagi nanti.",
       variant: "destructive"
     });
     return [];
@@ -170,14 +172,21 @@ export async function searchStations(
     
     console.log(`Searching stations with keyword: "${query}"`);
     
-    // Using the exact format from the provided API endpoint
     const queryParams = new URLSearchParams({
       output: 'json',
       countrycode: 'ID',
-      stateorprovince: query, // Use the query as the stateorprovince parameter
       maxresults: params.maxResults?.toString() || '10',
-      key: API_KEY
+      key: API_KEY,
+      latitude: params.latitude.toString(),
+      longitude: params.longitude.toString(),
+      distance: '50', // Increased search radius for better results
+      distanceunit: 'km'
     });
+
+    // Add search query if provided
+    if (query) {
+      queryParams.append('search', query);
+    }
     
     const url = `${BASE_URL}/poi/?${queryParams.toString()}`;
     console.log("Search URL:", url);
@@ -188,86 +197,23 @@ export async function searchStations(
       throw new Error(`Failed to search stations: ${response.status}`);
     }
     
-    const data = await response.json();
+    const data = await response.json() as ChargingStation[];
     console.log("Search returned:", data.length, "results");
     
-    // Process the raw API response to match our ChargingStation format
-    const processedStations = data.map((item: any) => {
-      try {
-        // Build properly structured ChargingStation object from API response
-        const station: ChargingStation = {
-          id: item.ID,
-          uuid: item.UUID,
-          addressInfo: {
-            id: item.AddressInfo.ID,
-            title: item.AddressInfo.Title || '',
-            addressLine1: item.AddressInfo.AddressLine1 || '',
-            town: item.AddressInfo.Town || '',
-            stateOrProvince: item.AddressInfo.StateOrProvince || '',
-            postcode: item.AddressInfo.Postcode || '',
-            country: {
-              id: item.AddressInfo.CountryID,
-              isoCode: item.AddressInfo.Country?.ISOCode || '',
-              title: item.AddressInfo.Country?.Title || ''
-            },
-            latitude: item.AddressInfo.Latitude,
-            longitude: item.AddressInfo.Longitude,
-            distance: item.AddressInfo.Distance
-          },
-          operatorInfo: item.OperatorInfo ? {
-            id: item.OperatorInfo.ID,
-            name: item.OperatorInfo.Title,
-            websiteURL: item.OperatorInfo.WebsiteURL,
-            phoneNumber: item.OperatorInfo.PhonePrimaryContact
-          } : undefined,
-          statusType: item.StatusType ? {
-            id: item.StatusType.ID,
-            title: item.StatusType.Title,
-            isOperational: item.StatusType.IsOperational
-          } : undefined,
-          connections: (item.Connections || []).map((conn: any) => ({
-            id: conn.ID,
-            connectionType: {
-              id: conn.ConnectionTypeID,
-              title: conn.ConnectionType?.Title || "Unknown Type"
-            },
-            level: {
-              id: conn.LevelID,
-              title: conn.Level?.Title || "Unknown Level",
-              comments: conn.Level?.Comments || ""
-            },
-            powerKW: conn.PowerKW || 0,
-            currentType: conn.CurrentType ? {
-              id: conn.CurrentTypeID,
-              title: conn.CurrentType.Title
-            } : undefined,
-            quantity: conn.Quantity || 1
-          })),
-          usageType: item.UsageType ? {
-            id: item.UsageType.ID,
-            title: item.UsageType.Title
-          } : undefined,
-          usageCost: item.UsageCost || "Tidak ada informasi",
-          status: determineStationStatus({
-            statusType: item.StatusType
-          } as ChargingStation)
-        };
-        
-        return station;
-      } catch (error) {
-        console.error("Error processing station data:", error, item);
-        return null;
-      }
-    }).filter(Boolean);
-    
-    console.log("Processed stations:", processedStations.length);
-    
-    if (processedStations.length === 0) {
+    if (data.length === 0) {
       toast({
         title: "Tidak ada hasil",
         description: `Tidak ada stasiun pengisian ditemukan untuk pencarian "${query}".`,
       });
+      return [];
     }
+
+    // Process the stations with proper distance calculation and status
+    const processedStations = data.map(station => ({
+      ...station,
+      status: determineStationStatus(station),
+      distance: station.addressInfo?.distance || 0
+    }));
     
     return processedStations;
   } catch (error) {
@@ -280,5 +226,3 @@ export async function searchStations(
     return [];
   }
 }
-
-// Removed mapApiResponse function as it's now integrated into searchStations
