@@ -29,10 +29,18 @@ const StationList: React.FC<StationListProps> = ({
   const getActiveStationId = () => {
     // For simplicity, we'll assume the active station is the one that directions are being loaded for
     // In a real app, you'd track this state more explicitly
-    return isLoadingDirections ? stations[0]?.id : null;
+    return isLoadingDirections && stations && stations.length > 0 ? stations[0]?.id : null;
   };
-
-  console.log("StationList component, stations count:", stations?.length || 0);
+  
+  // Add debug logging to help troubleshoot
+  console.log("StationList render:", {
+    stationsLength: stations?.length || 0,
+    isLoading,
+    stationsData: stations || "No stations data"
+  });
+  
+  // Make sure stations is always an array to prevent issues
+  const safeStations = Array.isArray(stations) ? stations : [];
   
   return (
     <div className="p-4">
@@ -65,7 +73,7 @@ const StationList: React.FC<StationListProps> = ({
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           <p className="mt-4 text-muted-foreground">Memuat stasiun pengisian...</p>
         </div>
-      ) : !stations || stations.length === 0 ? (
+      ) : safeStations.length === 0 ? (
         <div className="text-center py-8">
           <MapPin className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
           <p className="text-muted-foreground mt-4">Tidak ada stasiun pengisian ditemukan.</p>
@@ -76,16 +84,24 @@ const StationList: React.FC<StationListProps> = ({
       ) : (
         <ScrollArea className={expanded ? "h-[60vh]" : "h-[230px]"}>
           <div className="grid grid-cols-1 gap-4 pr-2">
-            {stations.map((station) => (
-              <div key={station.id} onClick={() => onStationSelect(station)}>
-                <StationCard 
-                  station={station} 
-                  onDirectionsClick={onDirectionsClick} 
-                  isLoadingDirections={isLoadingDirections && station.id === getActiveStationId()}
-                  isActive={station.id === getActiveStationId()}
-                />
-              </div>
-            ))}
+            {safeStations.map((station) => {
+              // Extra validation to ensure station has all required properties
+              if (!station || !station.id || !station.addressInfo) {
+                console.warn("Invalid station data:", station);
+                return null;
+              }
+              
+              return (
+                <div key={station.id} onClick={() => onStationSelect(station)}>
+                  <StationCard 
+                    station={station} 
+                    onDirectionsClick={onDirectionsClick} 
+                    isLoadingDirections={isLoadingDirections && station.id === getActiveStationId()}
+                    isActive={station.id === getActiveStationId()}
+                  />
+                </div>
+              );
+            })}
           </div>
         </ScrollArea>
       )}
