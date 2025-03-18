@@ -7,10 +7,6 @@ import { ChargingStation, fetchNearbyStations, searchStations } from '../utils/a
 import { calculateDistance } from '../utils/distance';
 import { toast } from '../components/ui/use-toast';
 import { Toaster } from '../components/ui/toaster';
-import { AlertCircle, Info } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const Index = () => {
   // State for map and stations
@@ -24,9 +20,7 @@ const Index = () => {
   
   // UI state
   const [expanded, setExpanded] = useState(false);
-  const [mapboxApiKey, setMapboxApiKey] = useState('');
-  const [showApiKeyInput, setShowApiKeyInput] = useState(true);
-
+  
   // Load stations when user location is available
   const loadStations = useCallback(async () => {
     if (!userLocation) return;
@@ -215,76 +209,9 @@ const Index = () => {
     }
   }, [userLocation, loadStations]);
 
-  // Handle API key submission
-  const handleApiKeySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (mapboxApiKey.trim()) {
-      setShowApiKeyInput(false);
-      localStorage.setItem('mapbox-api-key', mapboxApiKey);
-      toast({
-        title: "API Key disimpan",
-        description: "Mapbox API Key telah disimpan untuk sesi ini.",
-      });
-    } else {
-      toast({
-        variant: "destructive",
-        title: "API Key diperlukan",
-        description: "Silakan masukkan Mapbox API Key yang valid.",
-      });
-    }
-  };
-
-  // Check for saved API key
-  useEffect(() => {
-    const savedApiKey = localStorage.getItem('mapbox-api-key');
-    if (savedApiKey) {
-      setMapboxApiKey(savedApiKey);
-      setShowApiKeyInput(false);
-    }
-  }, []);
-
   return (
     <div className="relative h-screen w-full bg-background overflow-hidden">
       <Toaster />
-      
-      {/* API Key Input */}
-      {showApiKeyInput && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md animate-scale-in">
-            <Alert className="mb-4">
-              <Info className="h-4 w-4" />
-              <AlertTitle>Mapbox API Key Diperlukan</AlertTitle>
-              <AlertDescription>
-                Aplikasi ini membutuhkan Mapbox API Key untuk menampilkan peta. 
-                Kunjungi <a href="https://account.mapbox.com/" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">mapbox.com</a> untuk mendapatkan token.
-              </AlertDescription>
-            </Alert>
-            
-            <form onSubmit={handleApiKeySubmit} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="apiKey" className="text-sm font-medium">
-                  Mapbox API Key / Access Token
-                </label>
-                <Input
-                  id="apiKey"
-                  type="text" 
-                  value={mapboxApiKey}
-                  onChange={(e) => setMapboxApiKey(e.target.value)}
-                  placeholder="pk.eyJ1Ijoi..."
-                  className="w-full"
-                  required
-                />
-              </div>
-              <Button 
-                type="submit" 
-                className="w-full bg-blue-500 hover:bg-blue-600"
-              >
-                Simpan dan Lanjutkan
-              </Button>
-            </form>
-          </div>
-        </div>
-      )}
       
       {/* Search Bar */}
       <div className="absolute top-4 left-4 right-4 z-10 animate-fade-in">
@@ -303,7 +230,6 @@ const Index = () => {
           userLocation={userLocation}
           onStationClick={handleStationSelect}
           selectedStation={selectedStation}
-          apiKey={mapboxApiKey}
         />
       </div>
       

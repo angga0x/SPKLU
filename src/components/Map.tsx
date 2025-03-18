@@ -10,7 +10,7 @@ interface MapProps {
   userLocation: { latitude: number; longitude: number } | null;
   onStationClick: (station: ChargingStation) => void;
   selectedStation: ChargingStation | null;
-  apiKey: string;
+  apiKey?: string;
 }
 
 const Map: React.FC<MapProps> = ({ 
@@ -18,7 +18,7 @@ const Map: React.FC<MapProps> = ({
   userLocation, 
   onStationClick,
   selectedStation,
-  apiKey
+  apiKey = 'pk.eyJ1IjoiYW5nZzB4IiwiYSI6ImNtOGU0b3ZleDAzMW4ycW9mbHY1YXhtdTQifQ.cZL2sxCvBSXQDSqZ1aL-hQ' // Default to the provided API key
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -28,7 +28,7 @@ const Map: React.FC<MapProps> = ({
 
   // Initialize the map
   useEffect(() => {
-    if (!mapContainer.current || map.current || !apiKey) return;
+    if (!mapContainer.current || map.current) return;
 
     // Use the provided API key
     mapboxgl.accessToken = apiKey;
@@ -89,7 +89,7 @@ const Map: React.FC<MapProps> = ({
         map.current = null;
       }
     };
-  }, [apiKey]);
+  }, [apiKey, userLocation]);
 
   // Update user location marker
   useEffect(() => {
@@ -185,15 +185,6 @@ const Map: React.FC<MapProps> = ({
   return (
     <div className="relative w-full h-full rounded-xl overflow-hidden bg-gray-100">
       <div ref={mapContainer} className="map-container" />
-      {!apiKey && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-          <div className="text-center p-4 max-w-sm">
-            <p className="text-sm text-muted-foreground mb-2">
-              Please enter your Mapbox API key to load the map
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
