@@ -1,3 +1,4 @@
+
 import { toast } from "../components/ui/use-toast";
 
 export interface ChargingStation {
@@ -167,18 +168,17 @@ export async function searchStations(
       return fetchNearbyStations(params);
     }
     
-    const { maxResults = 10 } = params;
+    console.log(`Searching stations with keyword: "${query}"`);
     
-    // Using the provided API endpoint structure for searching by keyword
+    // Using the exact format from the provided API endpoint
     const queryParams = new URLSearchParams({
       output: 'json',
       countrycode: 'ID',
       stateorprovince: query, // Use the query as the stateorprovince parameter
-      maxresults: maxResults.toString(),
-      key: API_KEY || ''
+      maxresults: params.maxResults?.toString() || '10',
+      key: API_KEY
     });
     
-    console.log(`Searching stations with keyword: "${query}"`);
     const url = `${BASE_URL}/poi/?${queryParams.toString()}`;
     console.log("Search URL:", url);
     
@@ -191,10 +191,85 @@ export async function searchStations(
     const data = await response.json();
     console.log("Search returned:", data.length, "results");
     
-    // Map the raw API response to our ChargingStation format
-    const processedData = mapApiResponse(data);
+    // Process the raw API response to match our ChargingStation format
+    const processedStations = data.map((item: any) => {
+      try {
+        // Build properly structured ChargingStation object from API response
+        const station: ChargingStation = {
+          id: item.ID,
+          uuid: item.UUID,
+          addressInfo: {
+            id: item.AddressInfo.ID,
+            title: item.AddressInfo.Title || '',
+            addressLine1: item.AddressInfo.AddressLine1 || '',
+            town: item.AddressInfo.Town || '',
+            stateOrProvince: item.AddressInfo.StateOrProvince || '',
+            postcode: item.AddressInfo.Postcode || '',
+            country: {
+              id: item.AddressInfo.CountryID,
+              isoCode: item.AddressInfo.Country?.ISOCode || '',
+              title: item.AddressInfo.Country?.Title || ''
+            },
+            latitude: item.AddressInfo.Latitude,
+            longitude: item.AddressInfo.Longitude,
+            distance: item.AddressInfo.Distance
+          },
+          operatorInfo: item.OperatorInfo ? {
+            id: item.OperatorInfo.ID,
+            name: item.OperatorInfo.Title,
+            websiteURL: item.OperatorInfo.WebsiteURL,
+            phoneNumber: item.OperatorInfo.PhonePrimaryContact
+          } : undefined,
+          statusType: item.StatusType ? {
+            id: item.StatusType.ID,
+            title: item.StatusType.Title,
+            isOperational: item.StatusType.IsOperational
+          } : undefined,
+          connections: (item.Connections || []).map((conn: any) => ({
+            id: conn.ID,
+            connectionType: {
+              id: conn.ConnectionTypeID,
+              title: conn.ConnectionType?.Title || "Unknown Type"
+            },
+            level: {
+              id: conn.LevelID,
+              title: conn.Level?.Title || "Unknown Level",
+              comments: conn.Level?.Comments || ""
+            },
+            powerKW: conn.PowerKW || 0,
+            currentType: conn.CurrentType ? {
+              id: conn.CurrentTypeID,
+              title: conn.CurrentType.Title
+            } : undefined,
+            quantity: conn.Quantity || 1
+          })),
+          usageType: item.UsageType ? {
+            id: item.UsageType.ID,
+            title: item.UsageType.Title
+          } : undefined,
+          usageCost: item.UsageCost || "Tidak ada informasi",
+          status: determineStationStatus({
+            statusType: item.StatusType
+          } as ChargingStation)
+        };
+        
+        return station;
+      } catch (error) {
+        console.error("Error processing station data:", error, item);
+        return null;
+      }
+    }).filter(Boolean);
     
-    return processedData;
+    console.log("Processed stations:", processedStations.length);
+    
+    if (processedStations.length === 0) {
+      toast({
+        title: "Tidak ada hasil",
+        description: `Tidak ada stasiun pengisian ditemukan untuk pencarian "${query}".`,
+      });
+    }
+    
+    return processedStations;
   } catch (error) {
     console.error('Error searching charging stations:', error);
     toast({
@@ -206,63 +281,4 @@ export async function searchStations(
   }
 }
 
-// New helper function to handle the specific OpenChargeMap response format
-export function mapApiResponse(apiResponse: any[]): ChargingStation[] {
-  console.log("Mapping API response:", apiResponse.length, "items");
-  
-  if (!Array.isArray(apiResponse) || apiResponse.length === 0) {
-    console.log("Empty or invalid API response");
-    return [];
-  }
-  
-  try {
-    return apiResponse.map(item => {
-      // Log the structure of the first item to help debug
-      if (apiResponse.indexOf(item) === 0) {
-        console.log("First item structure:", JSON.stringify(item));
-      }
-      
-      // Map the OpenChargeMap response to our ChargingStation interface
-      return {
-        id: item.ID,
-        uuid: item.UUID,
-        addressInfo: {
-          id: item.AddressInfo.ID,
-          title: item.AddressInfo.Title,
-          addressLine1: item.AddressInfo.AddressLine1,
-          town: item.AddressInfo.Town,
-          stateOrProvince: item.AddressInfo.StateOrProvince,
-          postcode: item.AddressInfo.Postcode,
-          latitude: item.AddressInfo.Latitude,
-          longitude: item.AddressInfo.Longitude,
-          country: {
-            id: item.AddressInfo.CountryID,
-            isoCode: "",  // This might not be in the response
-            title: ""     // This might not be in the response
-          },
-          distance: item.AddressInfo.Distance
-        },
-        connections: (item.Connections || []).map((conn: any) => ({
-          id: conn.ID,
-          connectionType: {
-            id: conn.ConnectionTypeID,
-            title: conn.ConnectionType?.Title || "Unknown Type"
-          },
-          level: {
-            id: conn.LevelID,
-            title: conn.Level?.Title || "Unknown Level",
-            comments: conn.Level?.Comments || ""
-          },
-          powerKW: conn.PowerKW,
-          quantity: conn.Quantity
-        })),
-        usageCost: item.UsageCost || "Tidak ada informasi", // Add usage cost information
-        status: determineStationStatus(item),
-        distance: item.AddressInfo.Distance
-      };
-    });
-  } catch (error) {
-    console.error("Error mapping API response:", error);
-    return [];
-  }
-}
+// Removed mapApiResponse function as it's now integrated into searchStations

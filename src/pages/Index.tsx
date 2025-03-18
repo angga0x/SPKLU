@@ -3,7 +3,7 @@ import Map from '../components/Map';
 import SearchBar from '../components/SearchBar';
 import StationList from '../components/StationList';
 import LocationButton from '../components/LocationButton';
-import { ChargingStation, fetchNearbyStations, searchStations, mapApiResponse } from '../utils/api';
+import { ChargingStation, fetchNearbyStations, searchStations } from '../utils/api';
 import { calculateDistance } from '../utils/distance';
 import { getDirections } from '../utils/directions';
 import { toast } from '../components/ui/use-toast';
@@ -36,7 +36,7 @@ const Index = () => {
     console.log("Loading stations near", userLocation);
     
     try {
-      let data = await fetchNearbyStations({
+      const data = await fetchNearbyStations({
         latitude: userLocation.latitude,
         longitude: userLocation.longitude,
         distance: 15,
@@ -45,26 +45,8 @@ const Index = () => {
       
       console.log("Loaded stations:", data.length);
       
-      if (data.length === 0) {
-        console.log("No stations found, checking if response needs mapping");
-        
-        // This is a fallback in case the data doesn't match our expected format
-        const response = await fetch(`https://api.openchargemap.io/v3/poi/?latitude=${userLocation.latitude}&longitude=${userLocation.longitude}&distance=15&distanceunit=km&maxresults=100&verbose=false&output=json&key=d7609f7a-6dca-4bd4-a531-ce798439da2c`);
-        
-        if (response.ok) {
-          const rawData = await response.json();
-          console.log("Raw API response:", rawData.length, "items");
-          
-          if (Array.isArray(rawData) && rawData.length > 0) {
-            // Map the raw data to our ChargingStation structure
-            data = mapApiResponse(rawData);
-            console.log("Mapped stations:", data.length);
-          }
-        }
-      }
-      
       // Calculate distance for each station if not already present
-      data = data.map(station => ({
+      const stationsWithDistance = data.map(station => ({
         ...station,
         distance: station.distance || calculateDistance(
           { latitude: userLocation.latitude, longitude: userLocation.longitude },
@@ -73,16 +55,16 @@ const Index = () => {
       }));
       
       // Sort by distance
-      data.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+      stationsWithDistance.sort((a, b) => (a.distance || 0) - (b.distance || 0));
       
-      setStations(data);
-      setFilteredStations(data);
+      setStations(stationsWithDistance);
+      setFilteredStations(stationsWithDistance);
       setLocationRequired(false);
       
-      if (data.length > 0) {
+      if (stationsWithDistance.length > 0) {
         toast({
           title: "Stasiun ditemukan",
-          description: `${data.length} stasiun pengisian kendaraan listrik terdekat ditemukan.`,
+          description: `${stationsWithDistance.length} stasiun pengisian kendaraan listrik terdekat ditemukan.`,
         });
       } else {
         toast({
@@ -165,7 +147,7 @@ const Index = () => {
     try {
       console.log(`Searching for stations with query: "${query}"`);
       
-      // Use the searchStations API function with the new endpoint
+      // Use the updated searchStations function
       const results = await searchStations(query, {
         latitude: userLocation.latitude,
         longitude: userLocation.longitude,
@@ -174,7 +156,7 @@ const Index = () => {
       
       console.log(`Search returned ${results.length} stations`);
       
-      // Calculate distance
+      // Calculate distance for each result
       const resultsWithDistance = results.map(station => ({
         ...station,
         distance: calculateDistance(
