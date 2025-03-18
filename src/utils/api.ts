@@ -1,3 +1,4 @@
+
 import { toast } from "../components/ui/use-toast";
 
 export interface ChargingStation {
@@ -116,7 +117,7 @@ export async function fetchNearbyStations(params: SearchParams): Promise<Chargin
     const data = await response.json() as ChargingStation[];
     console.log("Received data:", data.length, "stations");
     
-    if (data.length === 0) {
+    if (!data || data.length === 0) {
       toast({
         title: "Tidak ada hasil",
         description: "Tidak ada stasiun pengisian di sekitar lokasi ini.",
@@ -125,11 +126,27 @@ export async function fetchNearbyStations(params: SearchParams): Promise<Chargin
     }
 
     // Process the stations with proper distance calculation and status
-    const processedData = data.map(station => ({
-      ...station,
-      status: determineStationStatus(station),
-      distance: station.addressInfo?.distance || 0
-    }));
+    // Add validation to make sure we only process valid station data
+    const processedData = data
+      .filter(station => 
+        station && 
+        station.addressInfo && 
+        typeof station.addressInfo.latitude === 'number' &&
+        typeof station.addressInfo.longitude === 'number'
+      )
+      .map(station => ({
+        ...station,
+        status: determineStationStatus(station),
+        distance: station.addressInfo?.distance || 0
+      }));
+
+    if (processedData.length === 0) {
+      toast({
+        title: "Data tidak valid",
+        description: "Stasiun pengisian yang ditemukan memiliki format data yang tidak valid.",
+        variant: "destructive"
+      });
+    }
 
     return processedData;
   } catch (error) {
@@ -200,7 +217,7 @@ export async function searchStations(
     const data = await response.json() as ChargingStation[];
     console.log("Search returned:", data.length, "results");
     
-    if (data.length === 0) {
+    if (!data || data.length === 0) {
       toast({
         title: "Tidak ada hasil",
         description: `Tidak ada stasiun pengisian ditemukan untuk pencarian "${query}".`,
@@ -209,11 +226,27 @@ export async function searchStations(
     }
 
     // Process the stations with proper distance calculation and status
-    const processedStations = data.map(station => ({
-      ...station,
-      status: determineStationStatus(station),
-      distance: station.addressInfo?.distance || 0
-    }));
+    // Add validation to make sure we only process valid station data
+    const processedStations = data
+      .filter(station => 
+        station && 
+        station.addressInfo && 
+        typeof station.addressInfo.latitude === 'number' &&
+        typeof station.addressInfo.longitude === 'number'
+      )
+      .map(station => ({
+        ...station,
+        status: determineStationStatus(station),
+        distance: station.addressInfo?.distance || 0
+      }));
+    
+    if (processedStations.length === 0) {
+      toast({
+        title: "Data tidak valid",
+        description: "Hasil pencarian memiliki format data yang tidak valid.",
+        variant: "destructive"
+      });
+    }
     
     return processedStations;
   } catch (error) {

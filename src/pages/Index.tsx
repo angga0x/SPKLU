@@ -45,28 +45,33 @@ const Index = () => {
       
       console.log("Loaded stations:", data.length);
       
-      // Calculate distance for each station if not already present
-      const stationsWithDistance = data.map(station => ({
-        ...station,
-        distance: station.distance || calculateDistance(
-          { latitude: userLocation.latitude, longitude: userLocation.longitude },
-          { latitude: station.addressInfo.latitude, longitude: station.addressInfo.longitude }
-        )
-      }));
-      
-      // Sort by distance
-      stationsWithDistance.sort((a, b) => (a.distance || 0) - (b.distance || 0));
-      
-      setStations(stationsWithDistance);
-      setFilteredStations(stationsWithDistance);
-      setLocationRequired(false);
-      
-      if (stationsWithDistance.length > 0) {
+      if (data && data.length > 0) {
+        // Calculate distance for each station if not already present
+        const stationsWithDistance = data.map(station => ({
+          ...station,
+          distance: station.distance || 
+                   (station.addressInfo ? calculateDistance(
+                     { latitude: userLocation.latitude, longitude: userLocation.longitude },
+                     { latitude: station.addressInfo.latitude, longitude: station.addressInfo.longitude }
+                   ) : 0)
+        }));
+        
+        // Sort by distance
+        stationsWithDistance.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+        
+        setStations(stationsWithDistance);
+        setFilteredStations(stationsWithDistance);
+        setLocationRequired(false);
+        
         toast({
           title: "Stasiun ditemukan",
           description: `${stationsWithDistance.length} stasiun pengisian kendaraan listrik terdekat ditemukan.`,
         });
       } else {
+        setStations([]);
+        setFilteredStations([]);
+        setLocationRequired(false);
+        
         toast({
           title: "Tidak ada stasiun",
           description: "Tidak ada stasiun pengisian kendaraan listrik yang ditemukan di sekitar Anda.",
@@ -156,29 +161,32 @@ const Index = () => {
       
       console.log(`Search returned ${results.length} stations`);
       
-      // Calculate distance for each result
-      const resultsWithDistance = results.map(station => ({
-        ...station,
-        distance: calculateDistance(
-          { latitude: userLocation.latitude, longitude: userLocation.longitude },
-          { latitude: station.addressInfo.latitude, longitude: station.addressInfo.longitude }
-        )
-      }));
-      
-      // Sort by distance
-      resultsWithDistance.sort((a, b) => (a.distance || 0) - (b.distance || 0));
-      
-      setFilteredStations(resultsWithDistance);
-      
-      if (resultsWithDistance.length === 0) {
-        toast({
-          title: "Tidak ada hasil",
-          description: "Tidak ada stasiun pengisian yang cocok dengan pencarian Anda.",
-        });
-      } else {
+      if (results && results.length > 0) {
+        // Calculate distance for each result
+        const resultsWithDistance = results.map(station => ({
+          ...station,
+          distance: station.distance || 
+                   (station.addressInfo ? calculateDistance(
+                     { latitude: userLocation.latitude, longitude: userLocation.longitude },
+                     { latitude: station.addressInfo.latitude, longitude: station.addressInfo.longitude }
+                   ) : 0)
+        }));
+        
+        // Sort by distance
+        resultsWithDistance.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+        
+        setFilteredStations(resultsWithDistance);
+        
         toast({
           title: "Hasil pencarian",
           description: `${resultsWithDistance.length} stasiun pengisian ditemukan.`,
+        });
+      } else {
+        setFilteredStations([]);
+        
+        toast({
+          title: "Tidak ada hasil",
+          description: "Tidak ada stasiun pengisian yang cocok dengan pencarian Anda.",
         });
       }
     } catch (error) {
