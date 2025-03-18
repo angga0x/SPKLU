@@ -1,3 +1,4 @@
+
 import mapboxgl from 'mapbox-gl';
 import { ChargingStation } from '../../utils/api';
 
@@ -11,9 +12,9 @@ export const createStationMarker = ({ station, map, onStationClick }: CreateStat
   const { latitude, longitude } = station.addressInfo;
   
   const markerElement = document.createElement('div');
-  markerElement.className = `station-marker flex items-center justify-center relative p-1`;
-  markerElement.style.width = '40px';
-  markerElement.style.height = '40px';
+  markerElement.className = `station-marker flex items-center justify-center relative`;
+  markerElement.style.width = '32px';
+  markerElement.style.height = '32px';
   
   const bgColor = station.status === 'available' ? 'bg-green-100' : 
                   station.status === 'busy' ? 'bg-yellow-100' : 'bg-red-100';
@@ -22,15 +23,16 @@ export const createStationMarker = ({ station, map, onStationClick }: CreateStat
                     station.status === 'busy' ? 'text-yellow-500' : 'text-red-500';
   
   const bgCircle = document.createElement('div');
-  bgCircle.className = `absolute w-8 h-8 ${bgColor} rounded-full border border-gray-300`;
+  bgCircle.className = `absolute inset-0 m-auto ${bgColor} rounded-full border border-gray-300`;
   markerElement.appendChild(bgCircle);
   
   const icon = document.createElement('div');
-  icon.innerHTML = `<svg class="${iconColor} z-10" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2h10"></path><path d="M9 11V7"></path><path d="M15 11V7"></path><path d="M11 15v-3a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z"></path><path d="M5 22v-3a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v3"></path><path d="M11 1v3"></path><circle cx="11" cy="11" r="2"></circle></svg>`;
+  icon.className = 'absolute inset-0 m-auto flex items-center justify-center';
+  icon.innerHTML = `<svg class="${iconColor} z-10" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2h10"></path><path d="M9 11V7"></path><path d="M15 11V7"></path><path d="M11 15v-3a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z"></path><path d="M5 22v-3a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v3"></path><path d="M11 1v3"></path><circle cx="11" cy="11" r="2"></circle></svg>`;
   markerElement.appendChild(icon);
 
   const popup = new mapboxgl.Popup({
-    offset: 25,
+    offset: [0, -20],
     closeButton: true,
     closeOnClick: false,
     maxWidth: '300px',
@@ -100,7 +102,10 @@ export const createStationMarker = ({ station, map, onStationClick }: CreateStat
     }
   });
 
-  const marker = new mapboxgl.Marker(markerElement)
+  const marker = new mapboxgl.Marker({
+    element: markerElement,
+    anchor: 'center',
+  })
     .setLngLat([longitude, latitude])
     .setPopup(popup)
     .addTo(map);
