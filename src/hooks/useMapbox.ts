@@ -16,6 +16,7 @@ export const useMapbox = ({ apiKey, defaultLocation, onStationClick }: UseMapbox
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const vehicleMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const locationMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const routeSourceInitialized = useRef<boolean>(false);
 
   const initializeMap = useCallback(() => {
@@ -145,6 +146,11 @@ export const useMapbox = ({ apiKey, defaultLocation, onStationClick }: UseMapbox
       vehicleMarkerRef.current = null;
     }
     
+    if (locationMarkerRef.current) {
+      locationMarkerRef.current.remove();
+      locationMarkerRef.current = null;
+    }
+    
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
     
@@ -182,6 +188,7 @@ export const useMapbox = ({ apiKey, defaultLocation, onStationClick }: UseMapbox
     markersRef,
     userMarkerRef,
     vehicleMarkerRef,
+    locationMarkerRef,
     initializeMap,
     updateRouteSource,
     clearMap

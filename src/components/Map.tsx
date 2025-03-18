@@ -7,6 +7,7 @@ import { createUserLocationMarker } from './map/UserLocationMarker';
 import { createStationMarker } from './map/StationMarker';
 import { createVehicleMarker } from './map/VehicleMarker';
 import { useLiveTracking } from '../hooks/useLiveTracking';
+import { createLocationMarker } from './map/LocationMarker';
 
 interface MapProps {
   stations: ChargingStation[];
@@ -15,6 +16,7 @@ interface MapProps {
   selectedStation: ChargingStation | null;
   apiKey?: string;
   directionsRoute?: GeoJSON.Feature | null;
+  searchedLocation?: { latitude: number; longitude: number } | null;
 }
 
 const Map: React.FC<MapProps> = ({ 
@@ -23,7 +25,8 @@ const Map: React.FC<MapProps> = ({
   onStationClick,
   selectedStation,
   apiKey = 'pk.eyJ1IjoiYW5nZzB4IiwiYSI6ImNtOGU0b3ZleDAzMW4ycW9mbHY1YXhtdTQifQ.cZL2sxCvBSXQDSqZ1aL-hQ',
-  directionsRoute
+  directionsRoute,
+  searchedLocation
 }) => {
   const {
     mapContainer,
@@ -31,6 +34,8 @@ const Map: React.FC<MapProps> = ({
     mapLoaded,
     markersRef,
     userMarkerRef,
+    vehicleMarkerRef,
+    locationMarkerRef,
     initializeMap,
     clearMap,
     updateRouteSource
@@ -39,8 +44,6 @@ const Map: React.FC<MapProps> = ({
   // Store previous user location to avoid updating marker unnecessarily
   const prevUserLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
   
-  // Use a separate ref to track if the vehicle marker is shown
-  const vehicleMarkerShown = useRef<boolean>(false);
   // Track the previous directions route to avoid unnecessary updates
   const prevDirectionsRouteRef = useRef<GeoJSON.Feature | null>(null);
 
@@ -67,10 +70,9 @@ const Map: React.FC<MapProps> = ({
       
       createVehicleMarker({
         map: map.current,
-        location: liveLocation
+        location: liveLocation,
+        markerRef: vehicleMarkerRef
       });
-      
-      vehicleMarkerShown.current = true;
     }
   }, [liveLocation, mapLoaded, userLocation]);
 
@@ -96,6 +98,25 @@ const Map: React.FC<MapProps> = ({
       prevUserLocationRef.current = userLocation;
     }
   }, [userLocation, mapLoaded]);
+
+  // Handle searched location updates
+  useEffect(() => {
+    if (!map.current || !mapLoaded || !searchedLocation) return;
+    
+    createLocationMarker({
+      map: map.current,
+      location: searchedLocation,
+      markerRef: locationMarkerRef
+    });
+    
+    // Fly to the searched location
+    map.current.flyTo({
+      center: [searchedLocation.longitude, searchedLocation.latitude],
+      zoom: 14,
+      speed: 1.5,
+      curve: 1
+    });
+  }, [searchedLocation, mapLoaded]);
 
   // Handle stations updates
   useEffect(() => {
@@ -195,6 +216,7 @@ const Map: React.FC<MapProps> = ({
           <p>Stations Count: {stations.length}</p>
           <p>Markers Count: {markersRef.current.length}</p>
           <p>Directions: {directionsRoute ? 'Active' : 'None'}</p>
+          <p>Searched Location: {searchedLocation ? 'Yes' : 'No'}</p>
         </div>
       )}
     </div>

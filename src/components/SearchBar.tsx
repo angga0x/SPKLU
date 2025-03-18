@@ -5,9 +5,11 @@ import { Button } from './ui/button';
 import { Search, LocateFixed, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { searchLocation } from '@/utils/api';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
+  onLocationSearch?: (location: { latitude: number; longitude: number }) => void;
   isLoading: boolean;
   className?: string;
   onGetUserLocation: () => void;
@@ -16,6 +18,7 @@ interface SearchBarProps {
 
 const SearchBar: React.FC<SearchBarProps> = ({ 
   onSearch, 
+  onLocationSearch,
   isLoading, 
   className,
   onGetUserLocation,
@@ -23,13 +26,35 @@ const SearchBar: React.FC<SearchBarProps> = ({
 }) => {
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (query.trim() || query === '') {
+    
+    if (!query.trim()) {
+      onSearch('');
+      return;
+    }
+    
+    // Try to search for a location first
+    setIsSearchingLocation(true);
+    try {
+      const locationResult = await searchLocation(query);
+      if (locationResult) {
+        console.log("Location found:", locationResult);
+        onLocationSearch?.(locationResult);
+      } else {
+        // If no location found, fall back to station search
+        onSearch(query);
+      }
+    } catch (error) {
+      console.error("Error searching location:", error);
+      // Fall back to station search on error
       onSearch(query);
+    } finally {
+      setIsSearchingLocation(false);
     }
   };
 
@@ -60,7 +85,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
         <Input
           ref={inputRef}
           type="text"
-          placeholder="Cari stasiun..."
+          placeholder="Cari lokasi atau SPKLU..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyPress={handleKeyPress}
@@ -70,7 +95,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           )}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          disabled={isLoading}
+          disabled={isLoading || isSearchingLocation}
         />
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         {query && (
@@ -107,9 +132,9 @@ const SearchBar: React.FC<SearchBarProps> = ({
           "h-9 bg-blue-500 hover:bg-blue-600 text-xs",
           isMobile ? "px-2 ml-1" : "px-3 ml-1"
         )}
-        disabled={isLoading}
+        disabled={isLoading || isSearchingLocation}
       >
-        {isLoading ? (
+        {isLoading || isSearchingLocation ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
         ) : (
           <>

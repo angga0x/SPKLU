@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import Map from '../components/Map';
 import SearchBar from '../components/SearchBar';
@@ -21,24 +22,27 @@ const Index = () => {
   const [directionsRoute, setDirectionsRoute] = useState<GeoJSON.Feature | null>(null);
   const [isLoadingDirections, setIsLoadingDirections] = useState(false);
   const [locationRequired, setLocationRequired] = useState(true);
+  const [searchedLocation, setSearchedLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   
   // UI state
   const [expanded, setExpanded] = useState(false);
   
   // Load stations when user location is available
-  const loadStations = useCallback(async () => {
-    if (!userLocation) {
-      console.log("User location not available yet, can't load stations");
+  const loadStations = useCallback(async (location?: { latitude: number; longitude: number }) => {
+    const targetLocation = location || userLocation;
+    
+    if (!targetLocation) {
+      console.log("Location not available yet, can't load stations");
       return;
     }
     
     setIsLoading(true);
-    console.log("Loading stations near", userLocation);
+    console.log("Loading stations near", targetLocation);
     
     try {
       const data = await fetchNearbyStations({
-        latitude: userLocation.latitude,
-        longitude: userLocation.longitude,
+        latitude: targetLocation.latitude,
+        longitude: targetLocation.longitude,
         distance: 15,
         maxResults: 100
       });
@@ -51,7 +55,7 @@ const Index = () => {
           ...station,
           distance: station.distance || 
                    (station.addressInfo ? calculateDistance(
-                     { latitude: userLocation.latitude, longitude: userLocation.longitude },
+                     { latitude: targetLocation.latitude, longitude: targetLocation.longitude },
                      { latitude: station.addressInfo.latitude, longitude: station.addressInfo.longitude }
                    ) : 0)
         }));
@@ -78,7 +82,7 @@ const Index = () => {
         
         toast({
           title: "Tidak ada stasiun",
-          description: "Tidak ada stasiun pengisian kendaraan listrik yang ditemukan di sekitar Anda.",
+          description: "Tidak ada stasiun pengisian kendaraan listrik yang ditemukan di sekitar lokasi ini.",
         });
       }
     } catch (error) {
@@ -119,6 +123,13 @@ const Index = () => {
         setUserLocation({ latitude, longitude });
         setLocationRequired(false);
         setIsLocating(false);
+        
+        // Clear any existing directions when location changes
+        setDirectionsRoute(null);
+        
+        // Clear the searched location
+        setSearchedLocation(null);
+        
         // Show toast notification
         toast({
           title: "Lokasi ditemukan",
@@ -142,11 +153,41 @@ const Index = () => {
     );
   }, []);
 
+  // Handle location search
+  const handleLocationSearch = useCallback((location: { latitude: number; longitude: number }) => {
+    console.log("Location search result:", location);
+    
+    // Clear any existing directions
+    setDirectionsRoute(null);
+    
+    // Set the searched location
+    setSearchedLocation(location);
+    
+    // Load stations around this location
+    loadStations(location);
+    
+    // Toast notification
+    toast({
+      title: "Lokasi ditemukan",
+      description: "Menampilkan stasiun pengisian di sekitar lokasi yang dicari.",
+    });
+  }, [loadStations]);
+
   // Search stations by query
   const handleSearch = useCallback(async (query: string) => {
     setSearchQuery(query);
     
+    // Clear directions
     setDirectionsRoute(null);
+    
+    if (!query.trim()) {
+      // If query is empty and we have user location, just show all stations around user
+      if (userLocation) {
+        setSearchedLocation(null);
+        loadStations();
+      }
+      return;
+    }
     
     if (!userLocation) {
       toast({
@@ -209,7 +250,7 @@ const Index = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [userLocation, getUserLocation]);
+  }, [userLocation, getUserLocation, loadStations]);
 
   // Handle station selection
   const handleStationSelect = useCallback((station: ChargingStation) => {
@@ -300,6 +341,7 @@ const Index = () => {
       <div className="absolute top-4 left-0 right-0 z-10 px-4 md:px-6 mx-auto max-w-2xl animate-fade-in">
         <SearchBar 
           onSearch={handleSearch}
+          onLocationSearch={handleLocationSearch}
           isLoading={isLoading}
           onGetUserLocation={getUserLocation}
           isLocating={isLocating}
@@ -314,6 +356,7 @@ const Index = () => {
           onStationClick={handleStationSelect}
           selectedStation={selectedStation}
           directionsRoute={directionsRoute}
+          searchedLocation={searchedLocation}
         />
       </div>
       
@@ -332,9 +375,9 @@ const Index = () => {
         <div className="absolute top-20 left-4 z-10 bg-white bg-opacity-80 p-2 rounded-lg shadow-md max-w-xs text-xs overflow-auto">
           <p className="font-bold">Debug Info:</p>
           <p>User Location: {userLocation ? `${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)}` : 'None'}</p>
+          <p>Searched Location: {searchedLocation ? `${searchedLocation.latitude.toFixed(4)}, ${searchedLocation.longitude.toFixed(4)}` : 'None'}</p>
           <p>All Stations: {stations.length}</p>
           <p>Filtered Stations: {filteredStations.length}</p>
-          <p>API Key: {API_KEY_SUBSTRING}</p>
           <p>Loading: {isLoading ? 'Yes' : 'No'}</p>
           <p>Directions: {directionsRoute ? 'Active' : 'None'}</p>
         </div>
@@ -357,7 +400,5 @@ const Index = () => {
     </div>
   );
 };
-
-const API_KEY_SUBSTRING = 'd7609f7a-****-****-****-********da2c';
 
 export default Index;
