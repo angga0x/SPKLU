@@ -32,7 +32,8 @@ const Map: React.FC<MapProps> = ({
     markersRef,
     userMarkerRef,
     initializeMap,
-    clearMap
+    clearMap,
+    updateRouteSource
   } = useMapbox({ apiKey, defaultLocation: userLocation, onStationClick });
 
   // Store previous user location to avoid updating marker unnecessarily
@@ -40,6 +41,8 @@ const Map: React.FC<MapProps> = ({
   
   // Use a separate ref to track if the vehicle marker is shown
   const vehicleMarkerShown = useRef<boolean>(false);
+  // Track the previous directions route to avoid unnecessary updates
+  const prevDirectionsRouteRef = useRef<GeoJSON.Feature | null>(null);
 
   const { location: liveLocation } = useLiveTracking({
     enabled: true,
@@ -100,6 +103,7 @@ const Map: React.FC<MapProps> = ({
 
     console.log("Updating station markers, count:", stations.length);
     
+    // Clear existing markers before adding new ones
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
@@ -131,26 +135,32 @@ const Map: React.FC<MapProps> = ({
 
   // Handle directions route updates
   useEffect(() => {
-    if (!map.current || !mapLoaded || !directionsRoute) return;
+    if (!map.current || !mapLoaded) return;
     
-    if (map.current.getSource('route')) {
-      (map.current.getSource('route') as mapboxgl.GeoJSONSource).setData(directionsRoute);
-    }
+    // Check if the route has changed by comparing with previous route
+    const routeChanged = directionsRoute !== prevDirectionsRouteRef.current;
     
-    if (directionsRoute.properties?.bbox) {
-      const [minLng, minLat, maxLng, maxLat] = directionsRoute.properties.bbox as number[];
-      map.current.fitBounds(
-        [
-          [minLng, minLat],
-          [maxLng, maxLat]
-        ],
-        {
-          padding: 50,
-          duration: 1000
-        }
-      );
+    if (routeChanged) {
+      // Update the route source with the new route or empty route if null
+      updateRouteSource(directionsRoute);
+      prevDirectionsRouteRef.current = directionsRoute;
+      
+      // Only adjust map view if we have a valid route
+      if (directionsRoute && directionsRoute.properties?.bbox) {
+        const [minLng, minLat, maxLng, maxLat] = directionsRoute.properties.bbox as number[];
+        map.current.fitBounds(
+          [
+            [minLng, minLat],
+            [maxLng, maxLat]
+          ],
+          {
+            padding: 50,
+            duration: 1000
+          }
+        );
+      }
     }
-  }, [directionsRoute, mapLoaded]);
+  }, [directionsRoute, mapLoaded, updateRouteSource]);
 
   return (
     <div className="relative w-full h-full rounded-xl overflow-hidden bg-gray-100">
