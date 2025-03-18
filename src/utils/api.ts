@@ -1,4 +1,3 @@
-
 import { toast } from "../components/ui/use-toast";
 
 export interface ChargingStation {
@@ -115,56 +114,97 @@ export async function fetchNearbyStations(params: SearchParams): Promise<Chargin
     }
     
     const data = await response.json();
-    console.log("Received data:", data?.length || 0, "stations");
+    console.log("Received raw data:", data);
     
-    if (!data || !Array.isArray(data) || data.length === 0) {
-      toast({
-        title: "Tidak ada hasil",
-        description: "Tidak ada stasiun pengisian di sekitar lokasi ini.",
-      });
+    if (!data || !Array.isArray(data)) {
+      console.error("Invalid response format:", data);
       return [];
     }
 
-    // Process the stations with proper validation and distance calculation
-    // Make sure we only process valid station data
-    const processedData = data
-      .filter(station => {
-        // Validate station object and required properties
-        const isValid = station && 
-                        typeof station === 'object' &&
-                        station.addressInfo && 
-                        typeof station.addressInfo === 'object' &&
-                        'latitude' in station.addressInfo && 
-                        'longitude' in station.addressInfo &&
-                        typeof station.addressInfo.latitude === 'number' &&
-                        typeof station.addressInfo.longitude === 'number';
-        
-        if (!isValid) {
-          console.warn('Invalid station data:', station);
-        }
-        return isValid;
-      })
-      .map(station => ({
-        ...station,
-        status: determineStationStatus(station),
-        distance: station.addressInfo?.distance || 0
-      }));
+    // Process the stations with proper validation
+    const processedData = data.filter(station => {
+      // Basic validation checks
+      const isValid = station &&
+        typeof station === 'object' &&
+        'ID' in station &&
+        'AddressInfo' in station &&
+        station.AddressInfo &&
+        typeof station.AddressInfo === 'object' &&
+        'Latitude' in station.AddressInfo &&
+        'Longitude' in station.AddressInfo;
+
+      if (!isValid) {
+        console.warn('Skipping invalid station:', station);
+        return false;
+      }
+      return true;
+    }).map(station => ({
+      id: station.ID,
+      uuid: station.UUID,
+      addressInfo: {
+        id: station.AddressInfo.ID,
+        title: station.AddressInfo.Title,
+        addressLine1: station.AddressInfo.AddressLine1,
+        town: station.AddressInfo.Town,
+        stateOrProvince: station.AddressInfo.StateOrProvince,
+        postcode: station.AddressInfo.Postcode,
+        country: {
+          id: station.AddressInfo.Country.ID,
+          isoCode: station.AddressInfo.Country.ISOCode,
+          title: station.AddressInfo.Country.Title
+        },
+        latitude: station.AddressInfo.Latitude,
+        longitude: station.AddressInfo.Longitude,
+        distance: station.AddressInfo.Distance,
+        contactTelephone1: station.AddressInfo.ContactTelephone1,
+        contactEmail: station.AddressInfo.ContactEmail,
+        accessComments: station.AddressInfo.AccessComments,
+        relatedURL: station.AddressInfo.RelatedURL
+      },
+      operatorInfo: station.OperatorInfo ? {
+        id: station.OperatorInfo.ID,
+        name: station.OperatorInfo.Title,
+        websiteURL: station.OperatorInfo.WebsiteURL,
+        phoneNumber: station.OperatorInfo.PhonePrimaryContact
+      } : undefined,
+      statusType: station.StatusType ? {
+        id: station.StatusType.ID,
+        title: station.StatusType.Title,
+        isOperational: station.StatusType.IsOperational
+      } : undefined,
+      connections: Array.isArray(station.Connections) ? station.Connections.map(conn => ({
+        id: conn.ID,
+        connectionType: {
+          id: conn.ConnectionType.ID,
+          title: conn.ConnectionType.Title
+        },
+        statusType: conn.StatusType ? {
+          id: conn.StatusType.ID,
+          title: conn.StatusType.Title,
+          isOperational: conn.StatusType.IsOperational
+        } : undefined,
+        level: {
+          id: conn.Level.ID,
+          title: conn.Level.Title,
+          comments: conn.Level.Comments
+        },
+        powerKW: conn.PowerKW,
+        currentType: conn.CurrentType ? {
+          id: conn.CurrentType.ID,
+          title: conn.CurrentType.Title
+        } : undefined,
+        quantity: conn.Quantity
+      })) : [],
+      usageType: station.UsageType ? {
+        id: station.UsageType.ID,
+        title: station.UsageType.Title
+      } : undefined,
+      distance: station.AddressInfo.Distance,
+      status: station.StatusType?.IsOperational ? 'available' : 'offline',
+      usageCost: station.UsageCost || 'Tidak ada informasi'
+    }));
 
     console.log("Processed stations:", processedData.length);
-
-    if (processedData.length === 0) {
-      toast({
-        title: "Data tidak valid",
-        description: "Stasiun pengisian yang ditemukan memiliki format data yang tidak valid.",
-        variant: "destructive"
-      });
-    } else {
-      toast({
-        title: "Stasiun ditemukan",
-        description: `${processedData.length} stasiun pengisian ditemukan.`,
-      });
-    }
-
     return processedData;
   } catch (error) {
     console.error('Error fetching charging stations:', error);
