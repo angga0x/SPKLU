@@ -80,6 +80,58 @@ export interface SearchParams {
   countryCode?: string;
 }
 
+interface NominatimResponse {
+  lat: string;
+  lon: string;
+  display_name: string;
+}
+
+export async function searchLocation(query: string): Promise<{ latitude: number; longitude: number } | null> {
+  try {
+    const searchQuery = encodeURIComponent(`${query},Indonesia`);
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${searchQuery}`;
+    
+    console.log("Searching location:", searchQuery);
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'StasiunCharging/1.0' // Required by Nominatim ToS
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to search location');
+    }
+    
+    const data: NominatimResponse[] = await response.json();
+    console.log("Location search results:", data);
+    
+    if (data && data.length > 0) {
+      const firstResult = data[0];
+      return {
+        latitude: parseFloat(firstResult.lat),
+        longitude: parseFloat(firstResult.lon)
+      };
+    }
+    
+    toast({
+      title: "Lokasi tidak ditemukan",
+      description: "Tidak dapat menemukan lokasi yang dicari",
+      variant: "destructive"
+    });
+    
+    return null;
+  } catch (error) {
+    console.error('Error searching location:', error);
+    toast({
+      title: "Error",
+      description: "Gagal mencari lokasi. Silakan coba lagi.",
+      variant: "destructive"
+    });
+    return null;
+  }
+}
+
 const BASE_URL = 'https://api.openchargemap.io/v3';
 const API_KEY = 'd7609f7a-6dca-4bd4-a531-ce798439da2c';
 
@@ -121,88 +173,94 @@ export async function fetchNearbyStations(params: SearchParams): Promise<Chargin
       return [];
     }
 
-    // Process the stations with proper validation
-    const processedData = data.filter(station => {
-      // Basic validation checks
-      const isValid = station &&
-        typeof station === 'object' &&
-        'ID' in station &&
-        'AddressInfo' in station &&
-        station.AddressInfo &&
-        typeof station.AddressInfo === 'object' &&
-        'Latitude' in station.AddressInfo &&
-        'Longitude' in station.AddressInfo;
+    const processedData = data
+      .filter(station => {
+        // Basic validation checks
+        const isValid = station &&
+          typeof station === 'object' &&
+          'ID' in station &&
+          'AddressInfo' in station &&
+          station.AddressInfo &&
+          typeof station.AddressInfo === 'object' &&
+          'Latitude' in station.AddressInfo &&
+          'Longitude' in station.AddressInfo;
 
-      if (!isValid) {
-        console.warn('Skipping invalid station:', station);
-        return false;
-      }
-      return true;
-    }).map(station => ({
-      id: station.ID,
-      uuid: station.UUID,
-      addressInfo: {
-        id: station.AddressInfo.ID,
-        title: station.AddressInfo.Title,
-        addressLine1: station.AddressInfo.AddressLine1,
-        town: station.AddressInfo.Town,
-        stateOrProvince: station.AddressInfo.StateOrProvince,
-        postcode: station.AddressInfo.Postcode,
-        country: {
-          id: station.AddressInfo.Country.ID,
-          isoCode: station.AddressInfo.Country.ISOCode,
-          title: station.AddressInfo.Country.Title
-        },
-        latitude: station.AddressInfo.Latitude,
-        longitude: station.AddressInfo.Longitude,
-        distance: station.AddressInfo.Distance,
-        contactTelephone1: station.AddressInfo.ContactTelephone1,
-        contactEmail: station.AddressInfo.ContactEmail,
-        accessComments: station.AddressInfo.AccessComments,
-        relatedURL: station.AddressInfo.RelatedURL
-      },
-      operatorInfo: station.OperatorInfo ? {
-        id: station.OperatorInfo.ID,
-        name: station.OperatorInfo.Title,
-        websiteURL: station.OperatorInfo.WebsiteURL,
-        phoneNumber: station.OperatorInfo.PhonePrimaryContact
-      } : undefined,
-      statusType: station.StatusType ? {
-        id: station.StatusType.ID,
-        title: station.StatusType.Title,
-        isOperational: station.StatusType.IsOperational
-      } : undefined,
-      connections: Array.isArray(station.Connections) ? station.Connections.map(conn => ({
-        id: conn.ID,
-        connectionType: {
-          id: conn.ConnectionType.ID,
-          title: conn.ConnectionType.Title
-        },
-        statusType: conn.StatusType ? {
-          id: conn.StatusType.ID,
-          title: conn.StatusType.Title,
-          isOperational: conn.StatusType.IsOperational
-        } : undefined,
-        level: {
-          id: conn.Level.ID,
-          title: conn.Level.Title,
-          comments: conn.Level.Comments
-        },
-        powerKW: conn.PowerKW,
-        currentType: conn.CurrentType ? {
-          id: conn.CurrentType.ID,
-          title: conn.CurrentType.Title
-        } : undefined,
-        quantity: conn.Quantity
-      })) : [],
-      usageType: station.UsageType ? {
-        id: station.UsageType.ID,
-        title: station.UsageType.Title
-      } : undefined,
-      distance: station.AddressInfo.Distance,
-      status: station.StatusType?.IsOperational ? 'available' : 'offline',
-      usageCost: station.UsageCost || 'Tidak ada informasi'
-    }));
+        if (!isValid) {
+          console.warn('Skipping invalid station:', station);
+          return false;
+        }
+        return true;
+      })
+      .map(station => {
+        const status: 'available' | 'busy' | 'offline' = 
+          station.StatusType?.IsOperational ? 'available' : 'offline';
+
+        return {
+          id: station.ID,
+          uuid: station.UUID,
+          addressInfo: {
+            id: station.AddressInfo.ID,
+            title: station.AddressInfo.Title,
+            addressLine1: station.AddressInfo.AddressLine1,
+            town: station.AddressInfo.Town,
+            stateOrProvince: station.AddressInfo.StateOrProvince,
+            postcode: station.AddressInfo.Postcode,
+            country: {
+              id: station.AddressInfo.Country.ID,
+              isoCode: station.AddressInfo.Country.ISOCode,
+              title: station.AddressInfo.Country.Title
+            },
+            latitude: station.AddressInfo.Latitude,
+            longitude: station.AddressInfo.Longitude,
+            distance: station.AddressInfo.Distance,
+            contactTelephone1: station.AddressInfo.ContactTelephone1,
+            contactEmail: station.AddressInfo.ContactEmail,
+            accessComments: station.AddressInfo.AccessComments,
+            relatedURL: station.AddressInfo.RelatedURL
+          },
+          operatorInfo: station.OperatorInfo ? {
+            id: station.OperatorInfo.ID,
+            name: station.OperatorInfo.Title,
+            websiteURL: station.OperatorInfo.WebsiteURL,
+            phoneNumber: station.OperatorInfo.PhonePrimaryContact
+          } : undefined,
+          statusType: station.StatusType ? {
+            id: station.StatusType.ID,
+            title: station.StatusType.Title,
+            isOperational: station.StatusType.IsOperational
+          } : undefined,
+          connections: Array.isArray(station.Connections) ? station.Connections.map(conn => ({
+            id: conn.ID,
+            connectionType: {
+              id: conn.ConnectionType.ID,
+              title: conn.ConnectionType.Title
+            },
+            statusType: conn.StatusType ? {
+              id: conn.StatusType.ID,
+              title: conn.StatusType.Title,
+              isOperational: conn.StatusType.IsOperational
+            } : undefined,
+            level: {
+              id: conn.Level.ID,
+              title: conn.Level.Title,
+              comments: conn.Level.Comments
+            },
+            powerKW: conn.PowerKW,
+            currentType: conn.CurrentType ? {
+              id: conn.CurrentType.ID,
+              title: conn.CurrentType.Title
+            } : undefined,
+            quantity: conn.Quantity
+          })) : [],
+          usageType: station.UsageType ? {
+            id: station.UsageType.ID,
+            title: station.UsageType.Title
+          } : undefined,
+          distance: station.AddressInfo.Distance,
+          status,
+          usageCost: station.UsageCost || 'Tidak ada informasi'
+        };
+      });
 
     console.log("Processed stations:", processedData.length);
     return processedData;
@@ -217,7 +275,6 @@ export async function fetchNearbyStations(params: SearchParams): Promise<Chargin
   }
 }
 
-// Helper function to determine station status for UI presentation
 function determineStationStatus(station: ChargingStation): 'available' | 'busy' | 'offline' {
   if (!station.statusType) return 'available';
   
@@ -240,93 +297,40 @@ export async function searchStations(
   params: SearchParams
 ): Promise<ChargingStation[]> {
   try {
-    if (!query.trim()) {
-      return fetchNearbyStations(params);
-    }
+    // First, try to find the location coordinates using Nominatim
+    const location = await searchLocation(query);
     
-    console.log(`Searching stations with keyword: "${query}"`);
-    
-    const queryParams = new URLSearchParams({
-      output: 'json',
-      countrycode: 'ID',
-      maxresults: params.maxResults?.toString() || '10',
-      key: API_KEY,
-      latitude: params.latitude.toString(),
-      longitude: params.longitude.toString(),
-      distance: '50', // Increased search radius for better results
-      distanceunit: 'km'
-    });
-
-    // Add search query if provided
-    if (query) {
-      queryParams.append('search', query);
-    }
-    
-    const url = `${BASE_URL}/poi/?${queryParams.toString()}`;
-    console.log("Search URL:", url);
-    
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to search stations: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log("Search returned:", data?.length || 0, "results");
-    
-    if (!data || !Array.isArray(data) || data.length === 0) {
-      toast({
-        title: "Tidak ada hasil",
-        description: `Tidak ada stasiun pengisian ditemukan untuk pencarian "${query}".`,
+    if (location) {
+      // If location is found, search for stations near that location
+      const stations = await fetchNearbyStations({
+        ...params,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        distance: 15 // 15km radius
       });
-      return [];
-    }
-
-    // Process the stations with proper validation and distance calculation
-    const processedStations = data
-      .filter(station => {
-        // Validate station object and required properties
-        const isValid = station && 
-                        typeof station === 'object' &&
-                        station.addressInfo && 
-                        typeof station.addressInfo === 'object' &&
-                        'latitude' in station.addressInfo && 
-                        'longitude' in station.addressInfo &&
-                        typeof station.addressInfo.latitude === 'number' &&
-                        typeof station.addressInfo.longitude === 'number';
-        
-        if (!isValid) {
-          console.warn('Invalid station data in search results:', station);
-        }
-        return isValid;
-      })
-      .map(station => ({
-        ...station,
-        status: determineStationStatus(station),
-        distance: station.addressInfo?.distance || 0
-      }));
-    
-    console.log("Processed search stations:", processedStations.length);
-    
-    if (processedStations.length === 0) {
-      toast({
-        title: "Data tidak valid",
-        description: "Hasil pencarian memiliki format data yang tidak valid.",
-        variant: "destructive"
-      });
-    } else {
-      toast({
-        title: "Hasil pencarian",
-        description: `${processedStations.length} stasiun pengisian ditemukan.`,
-      });
+      
+      if (stations.length > 0) {
+        toast({
+          title: "Stasiun ditemukan",
+          description: `${stations.length} stasiun ditemukan di sekitar lokasi yang dicari.`,
+        });
+      } else {
+        toast({
+          title: "Tidak ada stasiun",
+          description: "Tidak ada stasiun pengisian di sekitar lokasi yang dicari.",
+        });
+      }
+      
+      return stations;
     }
     
-    return processedStations;
+    // If no location found, fall back to the original search logic
+    return fetchNearbyStations(params);
   } catch (error) {
-    console.error('Error searching charging stations:', error);
+    console.error('Error searching stations:', error);
     toast({
       title: "Error",
-      description: "Gagal mencari stasiun pengisian. Silakan coba lagi nanti.",
+      description: "Gagal mencari stasiun. Silakan coba lagi.",
       variant: "destructive"
     });
     return [];
