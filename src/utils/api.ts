@@ -114,10 +114,10 @@ export async function fetchNearbyStations(params: SearchParams): Promise<Chargin
       throw new Error(`Failed to fetch stations: ${response.status}`);
     }
     
-    const data = await response.json() as ChargingStation[];
-    console.log("Received data:", data.length, "stations");
+    const data = await response.json();
+    console.log("Received data:", data?.length || 0, "stations");
     
-    if (!data || data.length === 0) {
+    if (!data || !Array.isArray(data) || data.length === 0) {
       toast({
         title: "Tidak ada hasil",
         description: "Tidak ada stasiun pengisian di sekitar lokasi ini.",
@@ -125,26 +125,43 @@ export async function fetchNearbyStations(params: SearchParams): Promise<Chargin
       return [];
     }
 
-    // Process the stations with proper distance calculation and status
-    // Add validation to make sure we only process valid station data
+    // Process the stations with proper validation and distance calculation
+    // Make sure we only process valid station data
     const processedData = data
-      .filter(station => 
-        station && 
-        station.addressInfo && 
-        typeof station.addressInfo.latitude === 'number' &&
-        typeof station.addressInfo.longitude === 'number'
-      )
+      .filter(station => {
+        // Validate station object and required properties
+        const isValid = station && 
+                        typeof station === 'object' &&
+                        station.addressInfo && 
+                        typeof station.addressInfo === 'object' &&
+                        'latitude' in station.addressInfo && 
+                        'longitude' in station.addressInfo &&
+                        typeof station.addressInfo.latitude === 'number' &&
+                        typeof station.addressInfo.longitude === 'number';
+        
+        if (!isValid) {
+          console.warn('Invalid station data:', station);
+        }
+        return isValid;
+      })
       .map(station => ({
         ...station,
         status: determineStationStatus(station),
         distance: station.addressInfo?.distance || 0
       }));
 
+    console.log("Processed stations:", processedData.length);
+
     if (processedData.length === 0) {
       toast({
         title: "Data tidak valid",
         description: "Stasiun pengisian yang ditemukan memiliki format data yang tidak valid.",
         variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Stasiun ditemukan",
+        description: `${processedData.length} stasiun pengisian ditemukan.`,
       });
     }
 
@@ -214,10 +231,10 @@ export async function searchStations(
       throw new Error(`Failed to search stations: ${response.status}`);
     }
     
-    const data = await response.json() as ChargingStation[];
-    console.log("Search returned:", data.length, "results");
+    const data = await response.json();
+    console.log("Search returned:", data?.length || 0, "results");
     
-    if (!data || data.length === 0) {
+    if (!data || !Array.isArray(data) || data.length === 0) {
       toast({
         title: "Tidak ada hasil",
         description: `Tidak ada stasiun pengisian ditemukan untuk pencarian "${query}".`,
@@ -225,26 +242,42 @@ export async function searchStations(
       return [];
     }
 
-    // Process the stations with proper distance calculation and status
-    // Add validation to make sure we only process valid station data
+    // Process the stations with proper validation and distance calculation
     const processedStations = data
-      .filter(station => 
-        station && 
-        station.addressInfo && 
-        typeof station.addressInfo.latitude === 'number' &&
-        typeof station.addressInfo.longitude === 'number'
-      )
+      .filter(station => {
+        // Validate station object and required properties
+        const isValid = station && 
+                        typeof station === 'object' &&
+                        station.addressInfo && 
+                        typeof station.addressInfo === 'object' &&
+                        'latitude' in station.addressInfo && 
+                        'longitude' in station.addressInfo &&
+                        typeof station.addressInfo.latitude === 'number' &&
+                        typeof station.addressInfo.longitude === 'number';
+        
+        if (!isValid) {
+          console.warn('Invalid station data in search results:', station);
+        }
+        return isValid;
+      })
       .map(station => ({
         ...station,
         status: determineStationStatus(station),
         distance: station.addressInfo?.distance || 0
       }));
     
+    console.log("Processed search stations:", processedStations.length);
+    
     if (processedStations.length === 0) {
       toast({
         title: "Data tidak valid",
         description: "Hasil pencarian memiliki format data yang tidak valid.",
         variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Hasil pencarian",
+        description: `${processedStations.length} stasiun pengisian ditemukan.`,
       });
     }
     

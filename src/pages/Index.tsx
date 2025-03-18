@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import Map from '../components/Map';
 import SearchBar from '../components/SearchBar';
@@ -63,10 +64,14 @@ const Index = () => {
         setFilteredStations(stationsWithDistance);
         setLocationRequired(false);
         
-        toast({
-          title: "Stasiun ditemukan",
-          description: `${stationsWithDistance.length} stasiun pengisian kendaraan listrik terdekat ditemukan.`,
-        });
+        console.log("Stations data processed and set:", stationsWithDistance.length);
+        
+        if (stationsWithDistance.length > 0) {
+          toast({
+            title: "Stasiun ditemukan",
+            description: `${stationsWithDistance.length} stasiun pengisian kendaraan listrik terdekat ditemukan.`,
+          });
+        }
       } else {
         setStations([]);
         setFilteredStations([]);
@@ -84,6 +89,10 @@ const Index = () => {
         title: "Error",
         description: "Gagal memuat stasiun pengisian. Silakan coba lagi nanti.",
       });
+      // Set empty arrays to prevent undefined errors
+      setStations([]);
+      setFilteredStations([]);
+      setLocationRequired(false);
     } finally {
       setIsLoading(false);
     }
@@ -176,6 +185,7 @@ const Index = () => {
         resultsWithDistance.sort((a, b) => (a.distance || 0) - (b.distance || 0));
         
         setFilteredStations(resultsWithDistance);
+        console.log("Filtered stations set:", resultsWithDistance.length);
         
         toast({
           title: "Hasil pencarian",
@@ -196,6 +206,9 @@ const Index = () => {
         title: "Error pencarian",
         description: "Gagal mencari stasiun pengisian. Silakan coba lagi nanti.",
       });
+      
+      // Set empty array to prevent undefined errors
+      setFilteredStations([]);
     } finally {
       setIsLoading(false);
     }
@@ -277,8 +290,13 @@ const Index = () => {
     }, 1000);
     
     return () => clearTimeout(timer);
-  }, []);
+  }, [userLocation, isLocating, getUserLocation]);
 
+  // Debug effect to log filtered stations
+  useEffect(() => {
+    console.log("Current filtered stations:", filteredStations.length);
+  }, [filteredStations]);
+  
   return (
     <div className="relative h-screen w-full bg-background overflow-hidden">
       <Toaster />

@@ -2,7 +2,7 @@
 import React from 'react';
 import { ChargingStation } from '../utils/api';
 import StationCard from './StationCard';
-import { ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
+import { ChevronUp, ChevronDown, Loader2, MapPin } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 
@@ -32,6 +32,8 @@ const StationList: React.FC<StationListProps> = ({
     return isLoadingDirections ? stations[0]?.id : null;
   };
 
+  console.log("StationList component, stations count:", stations?.length || 0);
+  
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
@@ -63,9 +65,10 @@ const StationList: React.FC<StationListProps> = ({
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           <p className="mt-4 text-muted-foreground">Memuat stasiun pengisian...</p>
         </div>
-      ) : stations.length === 0 ? (
+      ) : !stations || stations.length === 0 ? (
         <div className="text-center py-8">
-          <p className="text-muted-foreground">Tidak ada stasiun pengisian ditemukan.</p>
+          <MapPin className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+          <p className="text-muted-foreground mt-4">Tidak ada stasiun pengisian ditemukan.</p>
           <p className="text-sm text-muted-foreground mt-2">
             Coba ubah lokasi Anda atau perluas area pencarian.
           </p>
