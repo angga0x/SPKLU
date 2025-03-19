@@ -294,7 +294,7 @@ export async function searchStations(
   params: SearchParams
 ): Promise<ChargingStation[]> {
   try {
-    // First, try to find the location coordinates using Nominatim
+    // First, try to find the location coordinates using Mapbox
     const location = await searchLocation(query);
     
     if (location) {
@@ -306,10 +306,23 @@ export async function searchStations(
         distance: 15 // 15km radius
       });
       
-      if (stations.length > 0) {
+      // Ensure the stations have the correct distance calculation from the searched location
+      const stationsWithDistance = stations.map(station => ({
+        ...station,
+        distance: station.distance || 
+                (station.addressInfo ? calculateDistance(
+                  { latitude: location.latitude, longitude: location.longitude },
+                  { latitude: station.addressInfo.latitude, longitude: station.addressInfo.longitude }
+                ) : 0)
+      }));
+      
+      // Sort by distance
+      stationsWithDistance.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+      
+      if (stationsWithDistance.length > 0) {
         toast({
           title: "Stasiun ditemukan",
-          description: `${stations.length} stasiun ditemukan di sekitar lokasi yang dicari.`,
+          description: `${stationsWithDistance.length} stasiun ditemukan di sekitar lokasi yang dicari.`,
         });
       } else {
         toast({
@@ -318,11 +331,21 @@ export async function searchStations(
         });
       }
       
-      return stations;
+      return stationsWithDistance;
     }
     
     // If no location found, fall back to the original search logic
-    return fetchNearbyStations(params);
+    const results = await fetchNearbyStations(params);
+    
+    // Calculate distance for these results too
+    return results.map(station => ({
+      ...station,
+      distance: station.distance || 
+              (station.addressInfo ? calculateDistance(
+                { latitude: params.latitude, longitude: params.longitude },
+                { latitude: station.addressInfo.latitude, longitude: station.addressInfo.longitude }
+              ) : 0)
+    })).sort((a, b) => (a.distance || 0) - (b.distance || 0));
   } catch (error) {
     console.error('Error searching stations:', error);
     toast({
@@ -333,3 +356,6 @@ export async function searchStations(
     return [];
   }
 }
+
+// Import the calculateDistance function from distance.ts
+import { calculateDistance } from './distance';

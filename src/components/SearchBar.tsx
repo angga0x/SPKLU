@@ -1,11 +1,12 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Search, LocateFixed, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { searchLocation } from '@/utils/api';
+import { debounce } from '@/lib/utils';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
@@ -77,10 +78,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
     }
   };
 
-  // Fetch geocoding suggestions as user types
-  useEffect(() => {
-    const fetchSuggestions = async () => {
-      if (query.length < 3) {
+  // Use debounced function for fetching suggestions
+  const debouncedFetchSuggestions = useCallback(
+    debounce(async (searchQuery: string) => {
+      if (searchQuery.length < 3) {
         setGeocodingSuggestions([]);
         setShowSuggestions(false);
         return;
@@ -88,8 +89,8 @@ const SearchBar: React.FC<SearchBarProps> = ({
 
       try {
         const MAPBOX_API_KEY = 'pk.eyJ1IjoiYW5nZzB4IiwiYSI6ImNtOGU0b3ZleDAzMW4ycW9mbHY1YXhtdTQifQ.cZL2sxCvBSXQDSqZ1aL-hQ';
-        const searchQuery = encodeURIComponent(`${query}`);
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${searchQuery}.json?country=id&types=place,locality,neighborhood,address&limit=5&access_token=${MAPBOX_API_KEY}`;
+        const encodedQuery = encodeURIComponent(`${searchQuery}`);
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedQuery}.json?country=id&types=place,locality,neighborhood,address&limit=5&access_token=${MAPBOX_API_KEY}`;
         
         const response = await fetch(url);
         
@@ -106,19 +107,19 @@ const SearchBar: React.FC<SearchBarProps> = ({
         console.error('Error fetching suggestions:', error);
         setGeocodingSuggestions([]);
       }
-    };
+    }, 300),
+    []
+  );
 
-    const debounceTimer = setTimeout(() => {
-      if (query.trim()) {
-        fetchSuggestions();
-      } else {
-        setGeocodingSuggestions([]);
-        setShowSuggestions(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(debounceTimer);
-  }, [query]);
+  // Fetch geocoding suggestions as user types
+  useEffect(() => {
+    if (query.trim()) {
+      debouncedFetchSuggestions(query);
+    } else {
+      setGeocodingSuggestions([]);
+      setShowSuggestions(false);
+    }
+  }, [query, debouncedFetchSuggestions]);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -232,7 +233,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
       <Button 
         type="submit" 
         className={cn(
-          "h-9 bg-blue-500 hover:bg-blue-600 text-xs",
+          "h-9 bg-blue-500 hover:bg-blue-600 text-xs transition-colors",
           isMobile ? "px-2 ml-1" : "px-3 ml-1"
         )}
         disabled={isLoading || isSearchingLocation}
