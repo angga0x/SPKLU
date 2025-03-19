@@ -303,8 +303,8 @@ export async function searchStations(
         ...params,
         latitude: location.latitude,
         longitude: location.longitude,
-        distance: 15, // 15km radius
-        maxResults: 100 // Increased from 10 to 100
+        distance: 25, // 15km radius
+        maxResults: 15 // Increased from 10 to 100
       });
       
       // Ensure the stations have the correct distance calculation from the searched location
