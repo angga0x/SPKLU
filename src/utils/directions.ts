@@ -4,6 +4,7 @@ import { ChargingStation } from './api';
 interface DirectionsParams {
   origin: [number, number];
   destination: [number, number];
+  waypoints?: [number, number][];
   apiKey: string;
 }
 
@@ -43,15 +44,34 @@ interface DirectionsProperties {
   distance: number;
   duration: number;
   bbox?: number[];
+  legs?: Array<{
+    distance: number;
+    duration: number;
+  }>;
 }
 
 export async function getDirections({
   origin,
   destination,
+  waypoints = [],
   apiKey
 }: DirectionsParams): Promise<GeoJSON.Feature<DirectionsGeometry, DirectionsProperties> | null> {
   try {
-    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${origin[1]},${origin[0]};${destination[1]},${destination[0]}?alternatives=false&geometries=geojson&overview=full&steps=false&access_token=${apiKey}`;
+    // Construct the coordinates string for the URL
+    // Format: lon1,lat1;lon2,lat2;...
+    let coordinatesString = `${origin[1]},${origin[0]}`;
+    
+    // Add waypoints if they exist
+    if (waypoints.length > 0) {
+      waypoints.forEach(waypoint => {
+        coordinatesString += `;${waypoint[1]},${waypoint[0]}`;
+      });
+    }
+    
+    // Add destination
+    coordinatesString += `;${destination[1]},${destination[0]}`;
+
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinatesString}?alternatives=false&geometries=geojson&overview=full&steps=false&access_token=${apiKey}`;
 
     console.log("Fetching directions from:", url);
     
@@ -76,7 +96,11 @@ export async function getDirections({
       properties: {
         distance: route.distance,
         duration: route.duration,
-        bbox: getBoundingBox(route.geometry.coordinates)
+        bbox: getBoundingBox(route.geometry.coordinates),
+        legs: route.legs.map(leg => ({
+          distance: leg.distance,
+          duration: leg.duration
+        }))
       },
       geometry: {
         type: "LineString",
@@ -108,6 +132,37 @@ function getBoundingBox(coordinates: Array<[number, number]>): number[] {
   });
   
   return [minLng, minLat, maxLng, maxLat];
+}
+
+// Get directions for a multi-stop route
+export async function getMultiStopDirections(
+  stops: ChargingStation[],
+  apiKey: string
+): Promise<GeoJSON.Feature<DirectionsGeometry, DirectionsProperties> | null> {
+  if (!stops || stops.length < 2) {
+    console.error("Need at least 2 stops for directions");
+    return null;
+  }
+  
+  try {
+    const origin: [number, number] = [stops[0].addressInfo.latitude, stops[0].addressInfo.longitude];
+    const destination: [number, number] = [stops[stops.length - 1].addressInfo.latitude, stops[stops.length - 1].addressInfo.longitude];
+    
+    // Create waypoints from middle stops
+    const waypoints: [number, number][] = stops.slice(1, -1).map(stop => 
+      [stop.addressInfo.latitude, stop.addressInfo.longitude]
+    );
+    
+    return getDirections({
+      origin,
+      destination,
+      waypoints,
+      apiKey
+    });
+  } catch (error) {
+    console.error("Error calculating multi-stop directions:", error);
+    return null;
+  }
 }
 
 // Format directions duration into a human-readable string

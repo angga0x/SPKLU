@@ -2,7 +2,7 @@
 import React from 'react';
 import { ChargingStation } from '../utils/api';
 import StationCard from './StationCard';
-import { ChevronUp, ChevronDown, Loader2, MapPin } from 'lucide-react';
+import { ChevronUp, ChevronDown, Loader2, MapPin, Route } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 
@@ -14,6 +14,8 @@ interface StationListProps {
   expanded: boolean;
   onToggleExpand: () => void;
   isLoadingDirections?: boolean;
+  selectedStops?: ChargingStation[];
+  isRoutePlanActive?: boolean;
 }
 
 const StationList: React.FC<StationListProps> = ({
@@ -23,7 +25,9 @@ const StationList: React.FC<StationListProps> = ({
   onDirectionsClick,
   expanded,
   onToggleExpand,
-  isLoadingDirections = false
+  isLoadingDirections = false,
+  selectedStops = [],
+  isRoutePlanActive = false
 }) => {
   // Get the active station (the one we're getting directions for)
   const getActiveStationId = () => {
@@ -32,11 +36,22 @@ const StationList: React.FC<StationListProps> = ({
     return isLoadingDirections && stations && stations.length > 0 ? stations[0]?.id : null;
   };
   
+  // Check if a station is in the route
+  const isStationInRoute = (stationId: string) => {
+    return selectedStops.some(stop => stop.id === stationId);
+  };
+  
+  // Get the index of a station in the route
+  const getStationRouteIndex = (stationId: string) => {
+    return selectedStops.findIndex(stop => stop.id === stationId);
+  };
+  
   // Add debug logging to help troubleshoot
   console.log("StationList render:", {
     stationsLength: stations?.length || 0,
     isLoading,
-    stationsData: stations || "No stations data"
+    stationsData: stations || "No stations data",
+    selectedStopsLength: selectedStops?.length || 0
   });
   
   // Make sure stations is always an array to prevent issues
@@ -45,8 +60,14 @@ const StationList: React.FC<StationListProps> = ({
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">
+        <h2 className="text-lg font-semibold flex items-center">
           Stasiun Pengisian Terdekat
+          {isRoutePlanActive && (
+            <span className="ml-2 text-sm font-normal text-blue-500 flex items-center">
+              <Route className="h-4 w-4 mr-1" />
+              Mode Rute Aktif
+            </span>
+          )}
         </h2>
         <Button
           variant="ghost"
@@ -91,6 +112,9 @@ const StationList: React.FC<StationListProps> = ({
                 return null;
               }
               
+              const isInRoute = isStationInRoute(station.id);
+              const routeIndex = isInRoute ? getStationRouteIndex(station.id) : undefined;
+              
               return (
                 <div key={station.id} onClick={() => onStationSelect(station)}>
                   <StationCard 
@@ -98,6 +122,8 @@ const StationList: React.FC<StationListProps> = ({
                     onDirectionsClick={onDirectionsClick} 
                     isLoadingDirections={isLoadingDirections && station.id === getActiveStationId()}
                     isActive={station.id === getActiveStationId()}
+                    isInRoute={isInRoute}
+                    routeIndex={routeIndex}
                   />
                 </div>
               );
