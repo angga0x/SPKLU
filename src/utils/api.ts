@@ -303,7 +303,8 @@ export async function searchStations(
         ...params,
         latitude: location.latitude,
         longitude: location.longitude,
-        distance: 15 // 15km radius
+        distance: 15, // 15km radius
+        maxResults: 100 // Increased from 10 to 100
       });
       
       // Ensure the stations have the correct distance calculation from the searched location
@@ -335,7 +336,10 @@ export async function searchStations(
     }
     
     // If no location found, fall back to the original search logic
-    const results = await fetchNearbyStations(params);
+    const results = await fetchNearbyStations({
+      ...params,
+      maxResults: 100 // Increased from default to 100
+    });
     
     // Calculate distance for these results too
     return results.map(station => ({

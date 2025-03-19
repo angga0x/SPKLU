@@ -214,7 +214,7 @@ const Index = () => {
       const results = await searchStations(query, {
         latitude: userLocation.latitude,
         longitude: userLocation.longitude,
-        maxResults: 10
+        maxResults: 100
       });
       
       console.log(`Search returned ${results.length} stations`);
