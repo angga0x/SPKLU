@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import Map from '../components/Map';
 import SearchBar from '../components/SearchBar';
@@ -10,6 +9,8 @@ import { calculateDistance } from '../utils/distance';
 import { getDirections, getMultiStopDirections } from '../utils/directions';
 import { toast } from '../components/ui/use-toast';
 import { Toaster } from '../components/ui/toaster';
+import { Button } from '../components/ui/button';
+import { Route } from 'lucide-react';
 
 const Index = () => {
   // State for map and stations
@@ -267,7 +268,7 @@ const Index = () => {
     // In route planning mode, add to selected stops
     if (isRoutePlanActive) {
       // Check if station is already in selected stops
-      const isAlreadySelected = selectedStops.some(stop => stop.id === station.id);
+      const isAlreadySelected = selectedStops.some(stop => String(stop.id) === String(station.id));
       
       if (!isAlreadySelected) {
         setSelectedStops(prev => [...prev, station]);
@@ -290,8 +291,8 @@ const Index = () => {
   }, [selectedStops, isRoutePlanActive]);
 
   // Remove a stop from the route
-  const handleRemoveStop = useCallback((stopId: string) => {
-    setSelectedStops(prevStops => prevStops.filter(stop => stop.id !== stopId));
+  const handleRemoveStop = useCallback((stopId: string | number) => {
+    setSelectedStops(prevStops => prevStops.filter(stop => String(stop.id) !== String(stopId)));
     
     toast({
       title: "Dihapus dari rute",
@@ -334,12 +335,20 @@ const Index = () => {
       } else if (userLocation) {
         // Create a pseudo-station for user location
         const userStation: ChargingStation = {
-          id: "user-location",
+          id: -1,
+          uuid: "user-location",
           addressInfo: {
+            id: -1,
             title: "Lokasi Anda",
             addressLine1: "Lokasi saat ini",
             town: "",
             stateOrProvince: "",
+            postcode: "",
+            country: {
+              id: 0,
+              isoCode: "ID",
+              title: "Indonesia"
+            },
             latitude: userLocation.latitude,
             longitude: userLocation.longitude
           },
@@ -589,6 +598,8 @@ const Index = () => {
             expanded={expanded}
             onToggleExpand={() => setExpanded(!expanded)}
             isLoadingDirections={isLoadingDirections}
+            selectedStops={selectedStops}
+            isRoutePlanActive={isRoutePlanActive}
           />
         </div>
       )}

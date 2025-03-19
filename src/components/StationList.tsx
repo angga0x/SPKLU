@@ -37,12 +37,12 @@ const StationList: React.FC<StationListProps> = ({
   };
   
   // Check if a station is in the route
-  const isStationInRoute = (stationId: string) => {
+  const isStationInRoute = (stationId: string | number) => {
     return selectedStops.some(stop => stop.id === stationId);
   };
   
   // Get the index of a station in the route
-  const getStationRouteIndex = (stationId: string) => {
+  const getStationRouteIndex = (stationId: string | number) => {
     return selectedStops.findIndex(stop => stop.id === stationId);
   };
   
@@ -116,12 +116,12 @@ const StationList: React.FC<StationListProps> = ({
               const routeIndex = isInRoute ? getStationRouteIndex(station.id) : undefined;
               
               return (
-                <div key={station.id} onClick={() => onStationSelect(station)}>
+                <div key={String(station.id)} onClick={() => onStationSelect(station)}>
                   <StationCard 
                     station={station} 
                     onDirectionsClick={onDirectionsClick} 
-                    isLoadingDirections={isLoadingDirections && station.id === getActiveStationId()}
-                    isActive={station.id === getActiveStationId()}
+                    isLoadingDirections={isLoadingDirections && String(station.id) === String(getActiveStationId())}
+                    isActive={String(station.id) === String(getActiveStationId())}
                     isInRoute={isInRoute}
                     routeIndex={routeIndex}
                   />

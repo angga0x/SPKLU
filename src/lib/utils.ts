@@ -59,3 +59,9 @@ export function formatFileSize(bytes: number): string {
   
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
+
+// Safely compare IDs that could be either string or number
+export function compareIds(id1: string | number | null, id2: string | number | null): boolean {
+  if (id1 === null || id2 === null) return false;
+  return String(id1) === String(id2);
+}

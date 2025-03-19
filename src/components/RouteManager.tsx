@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 
 interface RouteManagerProps {
   selectedStops: ChargingStation[];
-  onRemoveStop: (stopId: string) => void;
+  onRemoveStop: (stopId: string | number) => void;
   onClearRoute: () => void;
   onStartRoute: () => void;
   isRouteActive: boolean;
@@ -68,7 +68,7 @@ const RouteManager: React.FC<RouteManagerProps> = ({
             <div className="space-y-3 mt-2">
               {selectedStops.map((stop, index) => (
                 <div 
-                  key={stop.id}
+                  key={String(stop.id)}
                   className="flex items-start bg-gray-50 rounded-md p-2 relative"
                 >
                   <div className="flex items-center justify-center h-6 w-6 rounded-full bg-blue-100 text-blue-700 text-xs font-medium mr-2 mt-1">
