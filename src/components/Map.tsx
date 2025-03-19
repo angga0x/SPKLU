@@ -1,13 +1,16 @@
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { ChargingStation } from '../utils/api';
 import { useMapbox } from '../hooks/useMapbox';
 import { createUserLocationMarker } from './map/UserLocationMarker';
 import { createStationMarker } from './map/StationMarker';
+import { createStationCluster } from './map/StationCluster';
 import { createVehicleMarker } from './map/VehicleMarker';
 import { useLiveTracking } from '../hooks/useLiveTracking';
 import { createLocationMarker } from './map/LocationMarker';
+import { clusterStations } from '../lib/utils';
+import { throttle } from '../lib/utils';
 
 interface MapProps {
   stations: ChargingStation[];
@@ -46,6 +49,24 @@ const Map: React.FC<MapProps> = ({
   
   // Track the previous directions route to avoid unnecessary updates
   const prevDirectionsRouteRef = useRef<GeoJSON.Feature | null>(null);
+  
+  // Store current map bounds and zoom level for clustering
+  const [mapBounds, setMapBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null);
+  const [mapZoom, setMapZoom] = useState<number>(12);
+  
+  // Update bounds and zoom on map move
+  const updateMapViewData = useRef(throttle(() => {
+    if (map.current) {
+      const bounds = map.current.getBounds();
+      setMapBounds({
+        north: bounds.getNorth(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        west: bounds.getWest()
+      });
+      setMapZoom(map.current.getZoom());
+    }
+  }, 300)).current;
 
   const { location: liveLocation } = useLiveTracking({
     enabled: true,
@@ -57,6 +78,25 @@ const Map: React.FC<MapProps> = ({
     initializeMap();
     return () => clearMap();
   }, [apiKey]);
+  
+  // Add map event listeners for clustering
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
+    
+    // Add event listeners for map move/zoom to update bounds data
+    map.current.on('moveend', updateMapViewData);
+    map.current.on('zoomend', updateMapViewData);
+    
+    // Initial bounds calculation
+    updateMapViewData();
+    
+    return () => {
+      if (map.current) {
+        map.current.off('moveend', updateMapViewData);
+        map.current.off('zoomend', updateMapViewData);
+      }
+    };
+  }, [mapLoaded, updateMapViewData]);
 
   // Handle live location updates - create vehicle marker only if different from user position
   useEffect(() => {
@@ -118,9 +158,9 @@ const Map: React.FC<MapProps> = ({
     });
   }, [searchedLocation, mapLoaded]);
 
-  // Handle stations updates
+  // Handle stations updates with clustering
   useEffect(() => {
-    if (!map.current || !mapLoaded) return;
+    if (!map.current || !mapLoaded || !mapBounds) return;
 
     console.log("Updating station markers, count:", stations.length);
     
@@ -128,7 +168,36 @@ const Map: React.FC<MapProps> = ({
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
-    stations.forEach(station => {
+    // Cluster stations based on current zoom level and map bounds
+    const { clusters, singleStations } = clusterStations(stations, mapZoom, mapBounds);
+    
+    console.log(`Created ${clusters.length} clusters and ${singleStations.length} single stations`);
+    
+    // Add cluster markers
+    clusters.forEach(cluster => {
+      const marker = createStationCluster({
+        cluster,
+        map: map.current!,
+        onClusterClick: (clusterData) => {
+          if (mapZoom < 14) {
+            // Zoom to cluster
+            map.current!.flyTo({
+              center: [clusterData.longitude, clusterData.latitude],
+              zoom: Math.min(mapZoom + 2, 15)
+            });
+          } else {
+            // Show all stations in this cluster
+            clusterData.stations.forEach(station => {
+              onStationClick(station);
+            });
+          }
+        }
+      });
+      markersRef.current.push(marker);
+    });
+    
+    // Add individual station markers
+    singleStations.forEach(station => {
       const marker = createStationMarker({
         station,
         map: map.current!,
@@ -138,11 +207,16 @@ const Map: React.FC<MapProps> = ({
     });
 
     if (selectedStation) {
-      const index = stations.findIndex(s => s.id === selectedStation.id);
-      if (index !== -1 && markersRef.current[index]) {
-        const marker = markersRef.current[index];
-        marker.getElement().classList.add('scale-125', 'z-20', 'shadow-lg');
-        marker.getElement().style.filter = 'drop-shadow(0 0 5px rgba(59, 130, 246, 0.5))';
+      // Highlight the selected station
+      const selectedMarker = markersRef.current.find(marker => {
+        const element = marker.getElement();
+        const stationId = element.getAttribute('data-marker-id')?.split('-')[1];
+        return stationId === String(selectedStation.id);
+      });
+      
+      if (selectedMarker) {
+        selectedMarker.getElement().classList.add('scale-125', 'z-20', 'shadow-lg');
+        selectedMarker.getElement().style.filter = 'drop-shadow(0 0 5px rgba(59, 130, 246, 0.5))';
         
         map.current.flyTo({
           center: [selectedStation.addressInfo.longitude, selectedStation.addressInfo.latitude],
@@ -152,7 +226,7 @@ const Map: React.FC<MapProps> = ({
         });
       }
     }
-  }, [stations, mapLoaded, selectedStation, onStationClick]);
+  }, [stations, mapLoaded, selectedStation, onStationClick, mapBounds, mapZoom]);
 
   // Handle directions route updates
   useEffect(() => {
@@ -215,6 +289,8 @@ const Map: React.FC<MapProps> = ({
           <p>User Location: {userLocation ? `${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)}` : 'None'}</p>
           <p>Stations Count: {stations.length}</p>
           <p>Markers Count: {markersRef.current.length}</p>
+          <p>Clusters: {mapBounds ? stations.length - clusterStations(stations, mapZoom, mapBounds).singleStations.length : 0}</p>
+          <p>Zoom: {mapZoom.toFixed(1)}</p>
           <p>Directions: {directionsRoute ? 'Active' : 'None'}</p>
           <p>Searched Location: {searchedLocation ? 'Yes' : 'No'}</p>
         </div>

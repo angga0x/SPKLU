@@ -1,4 +1,3 @@
-
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -26,12 +25,10 @@ export function debounce<T extends (...args: any[]) => any>(
   };
 }
 
-// Generate a unique ID
 export function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
 }
 
-// Throttle function to limit how often a function can be called
 export function throttle<T extends (...args: any[]) => any>(
   func: T,
   limit: number
@@ -49,7 +46,6 @@ export function throttle<T extends (...args: any[]) => any>(
   };
 }
 
-// Format a file size in bytes to a human-readable string
 export function formatFileSize(bytes: number): string {
   if (bytes === 0) return '0 Bytes';
   
@@ -60,8 +56,79 @@ export function formatFileSize(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-// Safely compare IDs that could be either string or number
 export function compareIds(id1: string | number | null, id2: string | number | null): boolean {
   if (id1 === null || id2 === null) return false;
   return String(id1) === String(id2);
+}
+
+export function clusterStations(
+  stations: any[], 
+  zoom: number,
+  bounds: { north: number; south: number; east: number; west: number }
+): { 
+  clusters: Array<{ 
+    longitude: number; 
+    latitude: number; 
+    count: number; 
+    stations: any[];
+  }>;
+  singleStations: any[];
+} {
+  if (zoom >= 14) {
+    return { 
+      clusters: [], 
+      singleStations: stations 
+    };
+  }
+
+  const clusterDistance = 0.01 * Math.pow(2, 14 - Math.min(zoom, 14));
+  
+  const padding = clusterDistance * 2;
+  const withinBounds = stations.filter(station => {
+    const { longitude, latitude } = station.addressInfo;
+    return longitude >= bounds.west - padding &&
+           longitude <= bounds.east + padding &&
+           latitude >= bounds.south - padding &&
+           latitude <= bounds.north + padding;
+  });
+  
+  const clusters: Array<{ longitude: number; latitude: number; count: number; stations: any[] }> = [];
+  const processed = new Set<string | number>();
+  
+  withinBounds.forEach(station => {
+    if (processed.has(station.id)) return;
+    
+    const { longitude, latitude } = station.addressInfo;
+    const nearbyStations = withinBounds.filter(s => {
+      if (processed.has(s.id)) return false;
+      
+      const distance = Math.sqrt(
+        Math.pow(s.addressInfo.longitude - longitude, 2) + 
+        Math.pow(s.addressInfo.latitude - latitude, 2)
+      );
+      
+      return distance <= clusterDistance;
+    });
+    
+    if (nearbyStations.length > 1) {
+      const centerLng = nearbyStations.reduce((sum, s) => sum + s.addressInfo.longitude, 0) / nearbyStations.length;
+      const centerLat = nearbyStations.reduce((sum, s) => sum + s.addressInfo.latitude, 0) / nearbyStations.length;
+      
+      clusters.push({
+        longitude: centerLng,
+        latitude: centerLat,
+        count: nearbyStations.length,
+        stations: nearbyStations
+      });
+      
+      nearbyStations.forEach(s => processed.add(s.id));
+    }
+  });
+  
+  const singleStations = withinBounds.filter(station => !processed.has(station.id));
+  
+  return {
+    clusters,
+    singleStations
+  };
 }
